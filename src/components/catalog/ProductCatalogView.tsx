@@ -62,7 +62,7 @@ export const ProductCatalogView: React.FC = () => {
   const formatMoney = (val: number) => {
     return new Intl.NumberFormat('fr-DZ', {
       maximumFractionDigits: 0,
-    }).format(val) + ' DA';
+    }).format(val) + '\u00A0DA';
   };
 
   // Map cart quantities by productId for rapid O(1) lookup
@@ -576,10 +576,10 @@ export const ProductCatalogView: React.FC = () => {
                   {/* Price & Action Section with >= 44x44px touch targets (Fitts's Law) */}
                   <div className="pt-3 border-t border-[#e7ddca] flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 min-w-0">
                     <div className="min-w-0">
-                      <div className="text-base font-black text-[#234931] font-mono leading-tight truncate">
+                      <div className="text-xl sm:text-2xl font-black text-[#1f3d29] font-mono leading-none whitespace-nowrap">
                         {formatMoney(product.price)}
                       </div>
-                      <div className="text-[10px] text-[#877a6b] font-medium truncate">
+                      <div className="text-[10px] text-[#877a6b] font-medium truncate mt-1">
                         {product.taxRate > 0 ? `TVA ${Math.round(product.taxRate * 100)}%` : 'Exonéré TVA'}
                       </div>
                     </div>

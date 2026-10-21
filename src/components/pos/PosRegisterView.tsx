@@ -210,7 +210,7 @@ export const PosRegisterView: React.FC = () => {
   const formatMoney = (val: number) => {
     return new Intl.NumberFormat('fr-DZ', {
       maximumFractionDigits: 0,
-    }).format(val) + ' DA';
+    }).format(val) + '\u00A0DA';
   };
 
   const executeScan = async (code: string) => {
@@ -663,8 +663,8 @@ export const PosRegisterView: React.FC = () => {
                     </div>
 
                     {/* Price and tap to add button (min 44px touch area) */}
-                    <div className="mt-2 pt-2 border-t border-sand-100 flex items-center justify-between">
-                      <div className="font-black text-sm text-forest-700 font-mono">
+                    <div className="mt-2 pt-2 border-t border-sand-100 flex items-center justify-between gap-1 min-w-0">
+                      <div className="font-black text-base sm:text-lg text-forest-800 font-mono whitespace-nowrap leading-none">
                         {formatMoney(p.price)}
                       </div>
                       <span

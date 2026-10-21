@@ -79,6 +79,7 @@
   border: 1.5px solid #e7ddca;
   border-radius: 1.5rem;
   box-shadow: 0 4px 16px -4px rgba(78, 60, 42, 0.08);
+  padding: 1.25rem;
 }
 
 .sherwood-card-subtle,

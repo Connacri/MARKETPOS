@@ -60,7 +60,7 @@ const PERIOD_CONFIG: Record<
 };
 
 const formatMoney = (val: number) =>
-  new Intl.NumberFormat('fr-DZ', { maximumFractionDigits: 0 }).format(val) + ' DA';
+  new Intl.NumberFormat('fr-DZ', { maximumFractionDigits: 0 }).format(val) + '\u00A0DA';
 
 const formatSaleDate = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', {
@@ -101,7 +101,7 @@ const KpiCard: React.FC<KpiCardProps> = ({
             {label}
           </div>
           <div
-            className={`text-2xl sm:text-3xl font-extrabold font-serif-title font-mono tabular-nums tracking-tight leading-tight mt-1.5 truncate ${
+            className={`text-3xl sm:text-4xl font-black font-serif-title font-mono tabular-nums tracking-tight leading-none mt-2 whitespace-nowrap overflow-hidden text-ellipsis ${
               isWarning
                 ? 'text-amber-900'
                 : isSuccess
@@ -358,25 +358,33 @@ export const DashboardView: React.FC = () => {
       {/* ============================================================
           TOP HERO TOOLBAR: Title & Dynamic Time Period Filter
           ============================================================ */}
-      <div className="sherwood-panel flex flex-col md:flex-row md:items-center justify-between gap-4 overflow-hidden w-full min-w-0">
-        <div className="min-w-0">
-          <div className="sherwood-badge-forest mb-2">
+      <div className="sherwood-panel p-5 sm:p-6 lg:p-7 flex flex-col md:flex-row md:items-center justify-between gap-5 overflow-hidden w-full min-w-0 shadow-xs">
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="sherwood-badge-forest mb-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold">
             <TrendingUp className="w-3.5 h-3.5 text-[#234931] shrink-0" />
             <span>Performances & Statistiques de Vente</span>
             <span aria-hidden="true" className="text-[#877a6b]">·</span>
             <span className="font-bold text-[#1f3d29]">{activePeriodConfig.rangeLabel}</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-[#234931] font-serif-title tracking-tight flex items-center gap-2 truncate">
-            <span>🍃</span>
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-[#1f3d29] font-serif-title tracking-tight flex items-center gap-2.5 truncate">
+            <span className="text-2xl sm:text-3xl">🍃</span>
             <span>Tableau de Bord & Métriques Clés</span>
           </h2>
-          <p className="text-xs sm:text-sm text-[#605547] mt-1 font-medium leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#5d5244] font-medium leading-relaxed max-w-2xl">
             Données de caisse consolidées, tendances des recettes et indicateurs d'activité en temps réel
           </p>
         </div>
 
         {/* Time Period Filter: Segmented Control & Quick Actions */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 w-full md:w-auto">
+          {/* Recette Période : Grand format sur une seule ligne */}
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 bg-[#fdfbf7] border border-[#d8cdba] px-4 py-2 rounded-2xl shadow-2xs shrink-0">
+            <span className="text-xs font-bold text-[#6e6354] uppercase tracking-wider whitespace-nowrap">Recette :</span>
+            <span className="text-xl sm:text-2xl font-black text-[#1f3d29] font-mono tabular-nums whitespace-nowrap">
+              {formatMoney(periodStats.revenue)}
+            </span>
+          </div>
+
           <div
             role="radiogroup"
             aria-label="Période d'analyse des performances"
@@ -759,10 +767,10 @@ export const DashboardView: React.FC = () => {
                     </div>
 
                     <div className="text-right shrink-0">
-                      <div className="font-black text-sm text-forest-900 font-mono tabular-nums">
+                      <div className="font-black text-base sm:text-lg text-forest-900 font-mono tabular-nums whitespace-nowrap">
                         {formatMoney(s.totalTTC)}
                       </div>
-                      <div className="text-xs text-ink-600 font-medium">
+                      <div className="text-xs text-ink-600 font-medium whitespace-nowrap">
                         {totalItems} article{totalItems > 1 ? 's' : ''}
                       </div>
                     </div>
@@ -812,10 +820,10 @@ export const DashboardView: React.FC = () => {
                   </div>
 
                   <div className="text-right shrink-0">
-                    <div className="font-black text-xs sm:text-sm text-forest-900 font-mono tabular-nums">
+                    <div className="font-black text-sm sm:text-base text-forest-900 font-mono tabular-nums whitespace-nowrap">
                       {formatMoney(p.revenue)}
                     </div>
-                    <div className="text-[11px] text-ink-600 font-medium">Chiffre d'affaires</div>
+                    <div className="text-[11px] text-ink-600 font-medium whitespace-nowrap">Chiffre d'affaires</div>
                   </div>
                 </li>
               ))}
@@ -904,10 +912,10 @@ export const DashboardView: React.FC = () => {
                   </div>
 
                   <div className="text-right shrink-0">
-                    <div className="font-black text-xs sm:text-sm text-forest-900 font-mono tabular-nums">
+                    <div className="font-black text-sm sm:text-base text-forest-900 font-mono tabular-nums whitespace-nowrap">
                       {formatMoney(c.revenue)}
                     </div>
-                    <div className="text-[11px] text-ink-600 font-medium">Total dépensé</div>
+                    <div className="text-[11px] text-ink-600 font-medium whitespace-nowrap">Total dépensé</div>
                   </div>
                 </li>
               ))}
