@@ -34,7 +34,7 @@ export const CartDrawer: React.FC = () => {
         aria-modal="true"
         aria-label="Panier de caisse mobile"
         onClick={(e) => e.stopPropagation()}
-        className="relative bg-sand-50 rounded-t-3xl max-h-[92vh] h-[88vh] shadow-2xl flex flex-col min-h-0 overflow-hidden animate-in slide-in-from-bottom duration-250 border-t-2 border-forest-800/30"
+        className="relative bg-sand-50 rounded-t-3xl max-h-[94vh] h-[88vh] shadow-2xl flex flex-col min-h-0 overflow-hidden animate-in slide-in-from-bottom duration-250 border-t-2 border-forest-800/30 pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] pb-[env(safe-area-inset-bottom,0px)]"
       >
         <CartPanel isDrawer onClose={() => setIsCartDrawerOpen(false)} />
       </div>

@@ -68,7 +68,7 @@ export const MobileBottomNav: React.FC = () => {
 
       <nav
         aria-label="Navigation principale"
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-sand-50/95 backdrop-blur-xl border-t border-sand-200 px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] shadow-lg flex items-center justify-around"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-sand-50/95 backdrop-blur-xl border-t border-sand-200 pl-[max(0.5rem,env(safe-area-inset-left,0px))] pr-[max(0.5rem,env(safe-area-inset-right,0px))] pt-1.5 pb-[max(0.5rem,calc(0.5rem+env(safe-area-inset-bottom,0px)))] shadow-lg flex items-center justify-around"
       >
         {LEFT.map(renderTab)}
 

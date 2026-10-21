@@ -724,7 +724,7 @@ export const PosRegisterView: React.FC = () => {
 
       {/* Keyboard Shortcuts Guide Modal */}
       {showShortcutGuideModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/60 backdrop-blur-xs p-3 sm:p-4 pt-[max(1rem,calc(1rem+env(safe-area-inset-top,0px)))] pb-[max(1rem,calc(1rem+env(safe-area-inset-bottom,0px)))] pl-[max(0.75rem,calc(0.75rem+env(safe-area-inset-left,0px)))] pr-[max(0.75rem,calc(0.75rem+env(safe-area-inset-right,0px)))] overflow-y-auto animate-in fade-in duration-150">
           <div role="dialog" aria-modal="true" aria-labelledby="shortcut-guide-title" className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-sand-200 overflow-hidden">
             <div className="px-5 py-4 bg-ink-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">

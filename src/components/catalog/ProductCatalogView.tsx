@@ -756,7 +756,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 pt-[max(1rem,calc(1rem+env(safe-area-inset-top,0px)))] pb-[max(1rem,calc(1rem+env(safe-area-inset-bottom,0px)))] pl-[max(0.75rem,calc(0.75rem+env(safe-area-inset-left,0px)))] pr-[max(0.75rem,calc(0.75rem+env(safe-area-inset-right,0px)))] overflow-y-auto">
       <div className="sherwood-panel w-full max-w-lg p-0 overflow-hidden shadow-2xl my-8">
         <div className="px-6 py-4 bg-[#1f3d29] text-white flex items-center justify-between">
           <h3 className="font-serif-title font-black text-sm flex items-center gap-2">

@@ -407,7 +407,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isDrawer = false, onClose 
       </div>
 
       {/* Real-time Totals & Checkout Trigger (Sticky at bottom, shrink-0) */}
-      <div className="p-4 bg-sand-50 border-t border-sand-200/80 space-y-3 shrink-0">
+      <div className={`p-4 bg-sand-50 border-t border-sand-200/80 space-y-3 shrink-0 ${isDrawer ? 'pb-[max(1rem,calc(1rem+env(safe-area-inset-bottom,0px)))]' : ''}`}>
         <div className="space-y-1.5 text-xs">
           <div className="flex justify-between text-ink-600">
             <span>Sous-total (HT) :</span>
@@ -477,7 +477,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isDrawer = false, onClose 
 
       {/* Checkout Modal */}
       {isCheckoutOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 pt-[max(1rem,calc(1rem+env(safe-area-inset-top,0px)))] pb-[max(1rem,calc(1rem+env(safe-area-inset-bottom,0px)))] pl-[max(1rem,calc(1rem+env(safe-area-inset-left,0px)))] pr-[max(1rem,calc(1rem+env(safe-area-inset-right,0px)))] overflow-y-auto">
           <div
             role="dialog"
             aria-modal="true"

@@ -16,7 +16,7 @@ const MainContent: React.FC = () => {
   const { activeView } = usePos();
 
   return (
-    <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 pb-28 lg:pb-10 flex-1 overflow-x-hidden">
+    <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] lg:pb-10 flex-1 overflow-x-hidden">
       {activeView === 'dashboard' && <DashboardView />}
       {activeView === 'pos' && <PosRegisterView />}
       {activeView === 'catalog' && <ProductCatalogView />}
@@ -62,8 +62,8 @@ export const AppLayout: React.FC = () => {
             onClick={() => setIsMobileMenuOpen(false)}
             aria-hidden="true"
           />
-          {/* Slide-out Drawer Container */}
-          <div className="relative z-10 w-80 max-w-[85vw] h-full shadow-2xl flex flex-col bg-[#1f3d29] border-r border-[#16311f] animate-in slide-in-from-left duration-250">
+          {/* Slide-out Drawer Container with Safe Area */}
+          <div className="relative z-10 w-80 max-w-[85vw] h-full shadow-2xl flex flex-col bg-[#1f3d29] border-r border-[#16311f] animate-in slide-in-from-left duration-250 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)]">
             <SherwoodSidebar isMobile onClose={() => setIsMobileMenuOpen(false)} />
           </div>
         </div>
@@ -88,7 +88,7 @@ export const AppLayout: React.FC = () => {
         aria-label="Messages de notification et alertes"
         aria-live="polite"
         aria-atomic="false"
-        className="fixed top-20 right-4 sm:right-6 z-50 pointer-events-none space-y-2 max-w-sm w-full"
+        className="fixed top-[calc(4.5rem+env(safe-area-inset-top,0px))] right-[calc(1rem+env(safe-area-inset-right,0px))] z-50 pointer-events-none space-y-2 max-w-sm w-full"
       >
         {globalToast && (
           <div

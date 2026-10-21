@@ -37,7 +37,9 @@ export const SherwoodSidebar: React.FC<SherwoodSidebarProps> = ({ isMobile = fal
   return (
     <aside
       className={`bg-[#1f3d29] text-[#fcfbf7] flex flex-col justify-between p-4 border-r border-[#16311f] select-none shadow-xl ${
-        isMobile ? 'w-full h-full overflow-y-auto' : 'w-64 h-screen sticky top-0'
+        isMobile
+          ? 'w-full h-full overflow-y-auto pt-[max(1rem,calc(1rem+env(safe-area-inset-top,0px)))] pb-[max(1rem,calc(1rem+env(safe-area-inset-bottom,0px)))] pl-[max(1rem,calc(1rem+env(safe-area-inset-left,0px)))]'
+          : 'w-64 h-screen sticky top-0'
       }`}
     >
       {/* Top Section: Wooden Signboard + Navigation */}
