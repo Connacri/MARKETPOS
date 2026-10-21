@@ -96,6 +96,27 @@ class PosSoundService {
       osc.stop(ctx.currentTime + 0.05);
     } catch {}
   }
+
+  // Crisp ascending double-tone chime on switching between carts (F3 / Alt+P)
+  playCartSwitch() {
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+      const t = ctx.currentTime;
+      [680, 1020].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, t + i * 0.045);
+        gain.gain.setValueAtTime(0.14, t + i * 0.045);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.045 + 0.08);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t + i * 0.045);
+        osc.stop(t + i * 0.045 + 0.08);
+      });
+    } catch {}
+  }
 }
 
 export const posSounds = new PosSoundService();

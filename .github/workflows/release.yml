@@ -62,13 +62,14 @@ jobs:
           set -eo pipefail
           VERSION="${INPUT_VERSION:-}"
           if [ -z "$VERSION" ]; then
-            PKG_VER=$(node -p "try { console.log(require('./package.json').version || '1.0.0'); } catch(e) { console.log('1.0.0'); }")
+            PKG_VER=$(node -e "const fs = require('fs'); try { const p = JSON.parse(fs.readFileSync('package.json', 'utf8')); process.stdout.write(String(p.version || '1.0.0').trim()); } catch(e) { process.stdout.write('1.0.0'); }")
             COMMITS_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo "1")
+            COMMITS_COUNT=$(echo "$COMMITS_COUNT" | tr -d '[:space:]')
             VERSION="${PKG_VER}.${COMMITS_COUNT}"
           fi
-          # Nettoyer et valider le format de version
-          CLEAN_VERSION=$(echo "$VERSION" | sed 's/[^a-zA-Z0-9._-]//g')
-          if [ -z "$CLEAN_VERSION" ]; then
+          # Nettoyer et valider le format de version (sans retours chariots ni espaces)
+          CLEAN_VERSION=$(echo "$VERSION" | tr -d '\r\n\t ' | sed 's/[^a-zA-Z0-9._-]//g')
+          if [ -z "$CLEAN_VERSION" ] || [ "$CLEAN_VERSION" = "undefined" ] || [[ "$CLEAN_VERSION" == undefined* ]]; then
             CLEAN_VERSION="1.0.0"
           fi
           echo "version=${CLEAN_VERSION}" >> "$GITHUB_OUTPUT"

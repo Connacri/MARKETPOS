@@ -9,6 +9,8 @@ import {
   PaymentMethod,
   DailyRevenueStat,
   ThermalPrinterSettings,
+  CartId,
+  SingleCartState,
 } from '../types';
 import {
   INITIAL_CATEGORIES,
@@ -20,7 +22,7 @@ import { ultraLocalDb } from '../services/localDb';
 import { posSounds } from '../services/soundService';
 import { supabaseSyncService, SupabaseConfig } from '../services/supabaseSyncService';
 
-interface CartSummary {
+export interface CartSummary {
   subtotalHT: number;
   totalTax: number;
   discountAmount: number;
@@ -82,15 +84,27 @@ interface PosContextType {
   customers: Customer[];
   sales: Sale[];
 
-  // Persistent Cart
+  // Persistent Dual Carts & Active Cart
+  activeCartId: CartId;
+  switchCart: (targetId?: CartId) => void;
+  carts: Record<CartId, SingleCartState>;
   cart: CartItem[];
   cartSummary: CartSummary;
+  cart1Summary: CartSummary;
+  cart2Summary: CartSummary;
   selectedCustomerId: number;
   setSelectedCustomerId: (id: number) => void;
   globalDiscountPercent: number;
   setGlobalDiscountPercent: (pct: number) => void;
   orderNote: string;
   setOrderNote: (note: string) => void;
+
+  // Customer specific carts (Client Carts)
+  customerCarts: Record<number, CartItem[]>;
+  loadCustomerCart: (customerId: number, targetCartId?: CartId) => void;
+  saveCurrentCartToCustomer: (customerId?: number) => void;
+  getCustomerCart: (customerId: number) => CartItem[];
+  getCustomerCartCount: (customerId: number) => number;
 
   // Cart actions
   addToCart: (product: Product, quantity?: number) => void;
@@ -165,6 +179,42 @@ const STORAGE_KEYS = {
   DISCOUNT: 'pos_module_global_discount_v3',
   SIMULATED_OFFLINE: 'pos_module_sim_offline_v3',
   PRINTER_SETTINGS: 'pos_module_printer_settings_v2',
+  DUAL_CARTS: 'pos_module_dual_carts_v4',
+  ACTIVE_CART_ID: 'pos_module_active_cart_id_v4',
+  CUSTOMER_CARTS: 'pos_module_customer_carts_v4',
+};
+
+export const computeCartSummary = (items: CartItem[], discountPercent: number): CartSummary => {
+  let subtotalHT = 0;
+  let totalTax = 0;
+  let baseTTC = 0;
+  let totalItems = 0;
+
+  items.forEach((item) => {
+    totalItems += item.quantity;
+    const lineOriginal = item.unitPrice * item.quantity;
+    const lineDisc = lineOriginal * (item.discountPercent / 100);
+    const lineNet = lineOriginal - lineDisc;
+
+    const lineHT = lineNet / (1 + item.product.taxRate);
+    const lineTVA = lineNet - lineHT;
+
+    baseTTC += lineNet;
+    subtotalHT += lineHT;
+    totalTax += lineTVA;
+  });
+
+  const globalDiscountAmount = baseTTC * (discountPercent / 100);
+  const finalTTC = Math.max(0, baseTTC - globalDiscountAmount);
+
+  return {
+    subtotalHT: Math.round(subtotalHT * 100) / 100,
+    totalTax: Math.round(totalTax * 100) / 100,
+    discountAmount: Math.round(globalDiscountAmount * 100) / 100,
+    totalTTC: Math.round(finalTTC * 100) / 100,
+    totalItems,
+    uniqueCount: items.length,
+  };
 };
 
 export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -281,42 +331,119 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return generateHistoricSales();
   });
 
-  // Cart
-  const [cart, setCart] = useState<CartItem[]>(() => {
+  // Dual Carts & Active Cart state
+  const [activeCartId, setActiveCartId] = useState<CartId>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.CART);
+      const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_CART_ID);
+      if (saved === '1' || saved === '2') return Number(saved) as CartId;
+    } catch {}
+    return 1;
+  });
+
+  const [carts, setCarts] = useState<Record<CartId, SingleCartState>>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.DUAL_CARTS);
       if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.warn('Storage read failed for cart:', e);
-    }
-    return [];
+    } catch {}
+
+    // Migration fallback from single cart
+    let legacyCart: CartItem[] = [];
+    let legacyCustId = 1;
+    let legacyDiscount = 0;
+    let legacyNote = '';
+    try {
+      const c = localStorage.getItem(STORAGE_KEYS.CART);
+      if (c) legacyCart = JSON.parse(c);
+      const cust = localStorage.getItem(STORAGE_KEYS.CUSTOMER);
+      if (cust) legacyCustId = Number(cust);
+      const d = localStorage.getItem(STORAGE_KEYS.DISCOUNT);
+      if (d) legacyDiscount = Number(d);
+      legacyNote = localStorage.getItem(STORAGE_KEYS.NOTE) || '';
+    } catch {}
+
+    return {
+      1: {
+        id: 1,
+        name: 'Panier 1',
+        items: legacyCart,
+        customerId: legacyCustId,
+        discountPercent: legacyDiscount,
+        note: legacyNote,
+      },
+      2: {
+        id: 2,
+        name: 'Panier 2',
+        items: [],
+        customerId: 1,
+        discountPercent: 0,
+        note: '',
+      },
+    };
   });
 
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number>(() => {
+  // Customer specific carts (pre-seeded with realistic articles for testing)
+  const [customerCarts, setCustomerCarts] = useState<Record<number, CartItem[]>>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.CUSTOMER);
-      return saved ? Number(saved) : 1;
-    } catch {
-      return 1;
-    }
+      const saved = localStorage.getItem(STORAGE_KEYS.CUSTOMER_CARTS);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      2: [
+        {
+          product: INITIAL_PRODUCTS[0], // Huile d'Olive Vierge Extra 1L
+          quantity: 2,
+          unitPrice: INITIAL_PRODUCTS[0].price,
+          discountPercent: 0,
+        },
+        {
+          product: INITIAL_PRODUCTS[5], // Couscous Fin Traditionnel 1kg
+          quantity: 3,
+          unitPrice: INITIAL_PRODUCTS[5].price,
+          discountPercent: 0,
+        },
+      ],
+      3: [
+        {
+          product: INITIAL_PRODUCTS[11], // Écouteurs Sans Fil TWS Bluetooth 5.3
+          quantity: 1,
+          unitPrice: INITIAL_PRODUCTS[11].price,
+          discountPercent: 5,
+        },
+        {
+          product: INITIAL_PRODUCTS[10], // Chargeur Rapide USB-C 30W
+          quantity: 2,
+          unitPrice: INITIAL_PRODUCTS[10].price,
+          discountPercent: 0,
+        },
+      ],
+      4: [
+        {
+          product: INITIAL_PRODUCTS[13], // Baguette Traditionnelle Dorée
+          quantity: 4,
+          unitPrice: INITIAL_PRODUCTS[13].price,
+          discountPercent: 0,
+        },
+        {
+          product: INITIAL_PRODUCTS[14], // Croissant au Beurre AOP
+          quantity: 6,
+          unitPrice: INITIAL_PRODUCTS[14].price,
+          discountPercent: 0,
+        },
+        {
+          product: INITIAL_PRODUCTS[6], // Café Moulu Torréfié 250g
+          quantity: 2,
+          unitPrice: INITIAL_PRODUCTS[6].price,
+          discountPercent: 0,
+        },
+      ],
+    };
   });
 
-  const [globalDiscountPercent, setGlobalDiscountPercent] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.DISCOUNT);
-      return saved ? Number(saved) : 0;
-    } catch {
-      return 0;
-    }
-  });
-
-  const [orderNote, setOrderNote] = useState<string>(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEYS.NOTE) || '';
-    } catch {
-      return '';
-    }
-  });
+  // Active cart convenience aliases
+  const cart = carts[activeCartId].items;
+  const selectedCustomerId = carts[activeCartId].customerId;
+  const globalDiscountPercent = carts[activeCartId].discountPercent;
+  const orderNote = carts[activeCartId].note;
 
   const [lastCompletedSale, setLastCompletedSale] = useState<Sale | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Sale | null>(null);
@@ -366,21 +493,23 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [previousCart, setPreviousCart] = useState<CartItem[] | null>(null);
   const [canUndoClearCart, setCanUndoClearCart] = useState<boolean>(false);
 
-  const undoClearCart = () => {
-    if (previousCart && previousCart.length > 0) {
-      setCart(previousCart);
-      setPreviousCart(null);
-      setCanUndoClearCart(false);
-      posSounds.playCartAdd();
-    }
-  };
-
   // LocalStorage sync
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
+      localStorage.setItem(STORAGE_KEYS.DUAL_CARTS, JSON.stringify(carts));
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_CART_ID, String(activeCartId));
+      localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(carts[activeCartId].items));
+      localStorage.setItem(STORAGE_KEYS.CUSTOMER, String(carts[activeCartId].customerId));
+      localStorage.setItem(STORAGE_KEYS.DISCOUNT, String(carts[activeCartId].discountPercent));
+      localStorage.setItem(STORAGE_KEYS.NOTE, carts[activeCartId].note);
     } catch {}
-  }, [cart]);
+  }, [carts, activeCartId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CUSTOMER_CARTS, JSON.stringify(customerCarts));
+    } catch {}
+  }, [customerCarts]);
 
   useEffect(() => {
     try {
@@ -400,27 +529,187 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   }, [customers]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.CUSTOMER, String(selectedCustomerId));
-    } catch {}
-  }, [selectedCustomerId]);
+  // Setters for active cart metadata
+  const setSelectedCustomerId = (id: number) => {
+    setCarts((prev) => ({
+      ...prev,
+      [activeCartId]: {
+        ...prev[activeCartId],
+        customerId: id,
+      },
+    }));
+  };
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.DISCOUNT, String(globalDiscountPercent));
-    } catch {}
-  }, [globalDiscountPercent]);
+  const setGlobalDiscountPercent = (pct: number) => {
+    setCarts((prev) => ({
+      ...prev,
+      [activeCartId]: {
+        ...prev[activeCartId],
+        discountPercent: pct,
+      },
+    }));
+  };
 
+  const setOrderNote = (note: string) => {
+    setCarts((prev) => ({
+      ...prev,
+      [activeCartId]: {
+        ...prev[activeCartId],
+        note,
+      },
+    }));
+  };
+
+  // Switch between Panier 1 and Panier 2
+  const switchCart = useCallback(
+    (targetId?: CartId) => {
+      setActiveCartId((curr) => {
+        const nextId: CartId = targetId !== undefined ? targetId : curr === 1 ? 2 : 1;
+        posSounds.playCartSwitch();
+        const targetCart = carts[nextId];
+        const count = targetCart.items.reduce((s, it) => s + it.quantity, 0);
+        const cust = customers.find((c) => c.id === targetCart.customerId);
+        const custLabel = cust ? cust.name : 'Client Comptoir';
+        showToast(
+          `🍃 Basculé sur Panier ${nextId} (${count} article${count > 1 ? 's' : ''} • ${custLabel}) [F3 / Alt+P]`,
+          'info'
+        );
+        return nextId;
+      });
+    },
+    [carts, customers, showToast]
+  );
+
+  // Load a customer's specific cart items into active cart or target cart
+  const loadCustomerCart = useCallback(
+    (customerId: number, targetCartId?: CartId) => {
+      const cust = customers.find((c) => c.id === customerId);
+      const targetId: CartId = targetCartId ?? activeCartId;
+      const items = customerCarts[customerId] || [];
+
+      setCarts((prev) => ({
+        ...prev,
+        [targetId]: {
+          ...prev[targetId],
+          customerId,
+          items: [...items],
+        },
+      }));
+
+      if (activeCartId !== targetId) {
+        setActiveCartId(targetId);
+      }
+
+      setActiveView('pos');
+      setIsCartDrawerOpen(true);
+      posSounds.playCartAdd();
+
+      showToast(
+        items.length > 0
+          ? `🛒 Panier de ${cust?.name || 'Client'} affiché (${items.length} article(s))`
+          : `🍃 Panier de ${cust?.name || 'Client'} ouvert dans Panier ${targetId} (vide, ajoutez des articles)`,
+        items.length > 0 ? 'success' : 'info'
+      );
+    },
+    [activeCartId, customerCarts, customers, setActiveView, setIsCartDrawerOpen, showToast]
+  );
+
+  // Save current active cart items directly into customer's profile
+  const saveCurrentCartToCustomer = useCallback(
+    (customerId?: number) => {
+      const targetCustId = customerId ?? carts[activeCartId].customerId;
+      if (!targetCustId || targetCustId === 1) return;
+      const items = [...carts[activeCartId].items];
+      setCustomerCarts((prev) => ({
+        ...prev,
+        [targetCustId]: items,
+      }));
+      const cust = customers.find((c) => c.id === targetCustId);
+      showToast(
+        `🍃 Articles sauvegardés dans le panier de ${cust?.name || 'Client'} (${items.length} article(s))`,
+        'success'
+      );
+    },
+    [activeCartId, carts, customers, showToast]
+  );
+
+  const getCustomerCart = useCallback(
+    (customerId: number) => {
+      return customerCarts[customerId] || [];
+    },
+    [customerCarts]
+  );
+
+  const getCustomerCartCount = useCallback(
+    (customerId: number) => {
+      const items = customerCarts[customerId] || [];
+      return items.reduce((sum, it) => sum + it.quantity, 0);
+    },
+    [customerCarts]
+  );
+
+  // Universal keyboard shortcut listener for dual cart switching (F3, Alt+P, Alt+1, Alt+2)
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.NOTE, orderNote);
-    } catch {}
-  }, [orderNote]);
+    const handleUniversalKeyDown = (e: KeyboardEvent) => {
+      // 1. F3: Universal switch between Panier 1 and Panier 2
+      if (e.key === 'F3') {
+        e.preventDefault();
+        switchCart();
+        return;
+      }
+
+      // 2. Alt + P: Universal switch
+      if (e.altKey && (e.key === 'p' || e.key === 'P')) {
+        e.preventDefault();
+        switchCart();
+        return;
+      }
+
+      // 3. Alt + 1: Switch directly to Panier 1
+      if (e.altKey && (e.key === '1' || e.code === 'Digit1')) {
+        e.preventDefault();
+        switchCart(1);
+        return;
+      }
+
+      // 4. Alt + 2: Switch directly to Panier 2
+      if (e.altKey && (e.key === '2' || e.code === 'Digit2')) {
+        e.preventDefault();
+        switchCart(2);
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleUniversalKeyDown);
+    return () => window.removeEventListener('keydown', handleUniversalKeyDown);
+  }, [switchCart]);
+
+  // Helper to update active cart items and keep customer cart synced
+  const updateActiveCartItems = (updater: (prevItems: CartItem[]) => CartItem[]) => {
+    setCarts((prev) => {
+      const currentCart = prev[activeCartId];
+      const newItems = updater(currentCart.items);
+      const updated = {
+        ...prev,
+        [activeCartId]: {
+          ...currentCart,
+          items: newItems,
+        },
+      };
+      // Keep customer cart in sync if a customer other than passager is selected
+      if (currentCart.customerId && currentCart.customerId !== 1) {
+        setCustomerCarts((custPrev) => ({
+          ...custPrev,
+          [currentCart.customerId]: newItems,
+        }));
+      }
+      return updated;
+    });
+  };
 
   // Cart actions
   const addToCart = (product: Product, quantity = 1) => {
-    setCart((prev) => {
+    updateActiveCartItems((prev) => {
       const existingIdx = prev.findIndex((item) => item.product.id === product.id);
       if (existingIdx > -1) {
         const next = [...prev];
@@ -484,19 +773,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       removeFromCart(productId);
       return;
     }
-    setCart((prev) =>
+    updateActiveCartItems((prev) =>
       prev.map((it) => (it.product.id === productId ? { ...it, quantity: Math.floor(quantity) } : it))
     );
   };
 
   const incrementQuantity = (productId: number) => {
-    setCart((prev) =>
+    updateActiveCartItems((prev) =>
       prev.map((it) => (it.product.id === productId ? { ...it, quantity: it.quantity + 1 } : it))
     );
   };
 
   const decrementQuantity = (productId: number) => {
-    setCart((prev) =>
+    updateActiveCartItems((prev) =>
       prev
         .map((it) => (it.product.id === productId ? { ...it, quantity: it.quantity - 1 } : it))
         .filter((it) => it.quantity > 0)
@@ -505,13 +794,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setItemDiscount = (productId: number, discountPercent: number) => {
     const clamped = Math.min(100, Math.max(0, discountPercent));
-    setCart((prev) =>
+    updateActiveCartItems((prev) =>
       prev.map((it) => (it.product.id === productId ? { ...it, discountPercent: clamped } : it))
     );
   };
 
   const removeFromCart = (productId: number) => {
-    setCart((prev) => prev.filter((it) => it.product.id !== productId));
+    updateActiveCartItems((prev) => prev.filter((it) => it.product.id !== productId));
   };
 
   const clearCart = (saveForUndo = true) => {
@@ -522,49 +811,52 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCanUndoClearCart(false);
       }, 6000);
     }
-    setCart([]);
-    setGlobalDiscountPercent(0);
-    setOrderNote('');
+    setCarts((prev) => {
+      const currentCart = prev[activeCartId];
+      if (currentCart.customerId && currentCart.customerId !== 1) {
+        setCustomerCarts((custPrev) => ({
+          ...custPrev,
+          [currentCart.customerId]: [],
+        }));
+      }
+      return {
+        ...prev,
+        [activeCartId]: {
+          ...currentCart,
+          items: [],
+          discountPercent: 0,
+          note: '',
+        },
+      };
+    });
   };
 
-  // Real-time calculation of totals
+  const undoClearCart = () => {
+    if (previousCart && previousCart.length > 0) {
+      updateActiveCartItems(() => previousCart);
+      setPreviousCart(null);
+      setCanUndoClearCart(false);
+      posSounds.playCartAdd();
+    }
+  };
+
+  // Real-time calculation of totals for active cart and both carts
   const cartSummary: CartSummary = useMemo(() => {
-    let subtotalHT = 0;
-    let totalTax = 0;
-    let baseTTC = 0;
-    let totalItems = 0;
+    return computeCartSummary(carts[activeCartId].items, carts[activeCartId].discountPercent);
+  }, [carts, activeCartId]);
 
-    cart.forEach((item) => {
-      totalItems += item.quantity;
-      const lineOriginal = item.unitPrice * item.quantity;
-      const lineDisc = lineOriginal * (item.discountPercent / 100);
-      const lineNet = lineOriginal - lineDisc;
+  const cart1Summary: CartSummary = useMemo(() => {
+    return computeCartSummary(carts[1].items, carts[1].discountPercent);
+  }, [carts]);
 
-      const lineHT = lineNet / (1 + item.product.taxRate);
-      const lineTVA = lineNet - lineHT;
-
-      baseTTC += lineNet;
-      subtotalHT += lineHT;
-      totalTax += lineTVA;
-    });
-
-    const globalDiscountAmount = baseTTC * (globalDiscountPercent / 100);
-    const finalTTC = Math.max(0, baseTTC - globalDiscountAmount);
-
-    return {
-      subtotalHT: Math.round(subtotalHT * 100) / 100,
-      totalTax: Math.round(totalTax * 100) / 100,
-      discountAmount: Math.round(globalDiscountAmount * 100) / 100,
-      totalTTC: Math.round(finalTTC * 100) / 100,
-      totalItems,
-      uniqueCount: cart.length,
-    };
-  }, [cart, globalDiscountPercent]);
+  const cart2Summary: CartSummary = useMemo(() => {
+    return computeCartSummary(carts[2].items, carts[2].discountPercent);
+  }, [carts]);
 
   // Products CRUD
   const updateProduct = (updated: Product) => {
     setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-    setCart((prev) =>
+    updateActiveCartItems((prev) =>
       prev.map((it) =>
         it.product.id === updated.id ? { ...it, product: updated, unitPrice: updated.price } : it
       )
@@ -805,13 +1097,18 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem(STORAGE_KEYS.CUSTOMER);
     localStorage.removeItem(STORAGE_KEYS.NOTE);
     localStorage.removeItem(STORAGE_KEYS.DISCOUNT);
+    localStorage.removeItem(STORAGE_KEYS.DUAL_CARTS);
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_CART_ID);
+    localStorage.removeItem(STORAGE_KEYS.CUSTOMER_CARTS);
     setProducts(INITIAL_PRODUCTS);
     setSales(generateHistoricSales());
     setCustomers(INITIAL_CUSTOMERS);
-    setCart([]);
-    setSelectedCustomerId(1);
-    setGlobalDiscountPercent(0);
-    setOrderNote('');
+    setActiveCartId(1);
+    setCarts({
+      1: { id: 1, name: 'Panier 1', items: [], customerId: 1, discountPercent: 0, note: '' },
+      2: { id: 2, name: 'Panier 2', items: [], customerId: 1, discountPercent: 0, note: '' },
+    });
+    setCustomerCarts({});
     refreshPendingSyncCount();
   };
 
@@ -834,14 +1131,24 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         categories,
         customers,
         sales,
+        activeCartId,
+        switchCart,
+        carts,
         cart,
         cartSummary,
+        cart1Summary,
+        cart2Summary,
         selectedCustomerId,
         setSelectedCustomerId,
         globalDiscountPercent,
         setGlobalDiscountPercent,
         orderNote,
         setOrderNote,
+        customerCarts,
+        loadCustomerCart,
+        saveCurrentCartToCustomer,
+        getCustomerCart,
+        getCustomerCartCount,
         addToCart,
         updateQuantity,
         incrementQuantity,

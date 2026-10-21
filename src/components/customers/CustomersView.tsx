@@ -19,13 +19,24 @@ import {
   ShieldCheck,
   ArrowRight,
   Smile,
+  ShoppingCart,
+  Package,
 } from 'lucide-react';
 import { SHERWOOD_ASSETS } from '../../assets/images';
 
 export const CustomersView: React.FC = () => {
-  const { customers, addCustomer, sales, setSelectedCustomerId, setActiveView } = usePos();
+  const {
+    customers,
+    addCustomer,
+    sales,
+    setSelectedCustomerId,
+    setActiveView,
+    loadCustomerCart,
+    getCustomerCart,
+    getCustomerCartCount,
+  } = usePos();
   const [searchQuery, setSearchQuery] = useState('');
-  const [tierFilter, setTierFilter] = useState<'ALL' | 'GOLD' | 'SILVER' | 'BRONZE'>('ALL');
+  const [tierFilter, setTierFilter] = useState<'ALL' | 'GOLD' | 'SILVER' | 'BRONZE' | 'HAS_CART'>('ALL');
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
 
   // New customer form state

@@ -46,6 +46,17 @@ export interface CartItem {
   note?: string;
 }
 
+export type CartId = 1 | 2;
+
+export interface SingleCartState {
+  id: CartId;
+  name: string;
+  items: CartItem[];
+  customerId: number;
+  discountPercent: number;
+  note: string;
+}
+
 export interface SaleItem {
   productId: number;
   productName: string;
