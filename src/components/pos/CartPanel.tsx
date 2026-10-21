@@ -19,6 +19,8 @@ import {
   Printer,
   Eye,
   AlertCircle,
+  ArrowLeftRight,
+  Bookmark,
 } from 'lucide-react';
 import { TransactionPrintPreviewModal } from '../receipt/TransactionPrintPreviewModal';
 import { PrintableReceiptModal } from '../receipt/PrintableReceiptModal';
@@ -60,6 +62,14 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isDrawer = false, onClose 
     canUndoClearCart,
     undoClearCart,
     printerSettings,
+    activeCartId,
+    switchCart,
+    cart1Summary,
+    cart2Summary,
+    customerCarts,
+    getCustomerCartCount,
+    loadCustomerCart,
+    saveCurrentCartToCustomer,
   } = usePos();
 
   const [editingItemDiscountId, setEditingItemDiscountId] = useState<number | null>(null);
@@ -134,6 +144,80 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isDrawer = false, onClose 
         </div>
       )}
 
+      {/* Dual Cart Switcher Bar (Panier 1 / Panier 2) with universal keyboard shortcuts */}
+      <div className="px-3 py-2 bg-[#172e1e] border-b border-[#244b2f] shrink-0">
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => switchCart(1)}
+            aria-pressed={activeCartId === 1}
+            className={`touch-btn min-h-[44px] flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between gap-1.5 cursor-pointer ${
+              activeCartId === 1
+                ? 'bg-[#234931] text-[#fdfbf7] shadow-sm border border-[#3e7550] ring-2 ring-emerald-400/50'
+                : 'bg-black/20 text-[#bad3c0] hover:text-white hover:bg-black/30 border border-transparent'
+            }`}
+            title="Activer Panier 1 (Raccourci universel : Alt+1 ou F3)"
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className={activeCartId === 1 ? 'text-emerald-300 text-sm' : 'text-stone-400 text-xs'}>🍃</span>
+              <span className="truncate">Panier 1</span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <span
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                  activeCartId === 1 ? 'bg-emerald-950/80 text-emerald-200' : 'bg-white/10 text-stone-300'
+                }`}
+              >
+                {cart1Summary.totalItems} art.
+              </span>
+              <kbd className="hidden sm:inline text-[9px] px-1 py-0.5 rounded bg-white/10 font-mono opacity-60">
+                Alt+1
+              </kbd>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => switchCart(2)}
+            aria-pressed={activeCartId === 2}
+            className={`touch-btn min-h-[44px] flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between gap-1.5 cursor-pointer ${
+              activeCartId === 2
+                ? 'bg-[#85522b] text-[#fff6ec] shadow-sm border border-[#a86a3e] ring-2 ring-amber-400/50'
+                : 'bg-black/20 text-[#bad3c0] hover:text-white hover:bg-black/30 border border-transparent'
+            }`}
+            title="Activer Panier 2 (Raccourci universel : Alt+2 ou F3)"
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className={activeCartId === 2 ? 'text-amber-300 text-sm' : 'text-stone-400 text-xs'}>🍂</span>
+              <span className="truncate">Panier 2</span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <span
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                  activeCartId === 2 ? 'bg-[#482611] text-amber-200' : 'bg-white/10 text-stone-300'
+                }`}
+              >
+                {cart2Summary.totalItems} art.
+              </span>
+              <kbd className="hidden sm:inline text-[9px] px-1 py-0.5 rounded bg-white/10 font-mono opacity-60">
+                Alt+2
+              </kbd>
+            </div>
+          </button>
+
+          {/* Quick Toggle button */}
+          <button
+            type="button"
+            onClick={() => switchCart()}
+            className="touch-btn min-h-[44px] px-2.5 py-1.5 bg-[#2d563a] hover:bg-[#3b6f4c] text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer shrink-0"
+            title="Basculer instantanément de panier (Raccourci universel F3 ou Alt+P)"
+          >
+            <ArrowLeftRight className="w-4 h-4 text-emerald-300" />
+            <span className="font-mono text-[10px] bg-black/30 px-1 py-0.5 rounded font-black">F3</span>
+          </button>
+        </div>
+      </div>
+
       {/* Cart Top Bar */}
       <div className="px-4 py-3 bg-forest-900 text-[#fcfbf7] border-b border-[#16311f] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5">
@@ -142,8 +226,8 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isDrawer = false, onClose 
           </div>
           <div>
             <h3 className="font-bold text-sm text-[#fff5ea] font-serif-title flex items-center gap-1.5">
-              <span>🍃</span>
-              <span>Panier de Vente</span>
+              <span>{activeCartId === 1 ? '🍃' : '🍂'}</span>
+              <span>Panier {activeCartId} • Vente</span>
               <span className="bg-[#2d563a] text-emerald-200 text-xs px-2 py-0.5 rounded-full font-mono font-bold ml-1">
                 {cartSummary.totalItems}
               </span>
@@ -209,17 +293,68 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isDrawer = false, onClose 
           <User className="w-4 h-4 text-[#8a7f72] shrink-0" />
           <select
             value={selectedCustomerId}
-            onChange={(e) => setSelectedCustomerId(Number(e.target.value))}
+            onChange={(e) => {
+              const newId = Number(e.target.value);
+              setSelectedCustomerId(newId);
+              // Auto-load if current cart is empty and this customer has saved items
+              if (cart.length === 0 && customerCarts[newId]?.length > 0) {
+                loadCustomerCart(newId);
+              }
+            }}
             aria-label="Client associé à la vente"
             className="flex-1 min-h-[40px] bg-sand-50 border border-[#e2d6c1] rounded-xl px-3 py-1.5 text-xs font-bold text-[#233d2a] focus:outline-hidden focus:ring-2 focus:ring-[#234931]/20 cursor-pointer"
           >
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} {c.company ? `(${c.company})` : ''}
-              </option>
-            ))}
+            {customers.map((c) => {
+              const cCount = getCustomerCartCount(c.id);
+              return (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.company ? `(${c.company})` : ''} {cCount > 0 ? `• [🛒 ${cCount} art.]` : ''}
+                </option>
+              );
+            })}
           </select>
         </div>
+
+        {/* Customer Cart Quick Action Banner */}
+        {selectedCustomerId !== 1 && (
+          <div className="flex items-center justify-between gap-2 p-2 bg-[#fdfbf7] rounded-xl border border-[#e2d7c2] text-xs">
+            {getCustomerCartCount(selectedCustomerId) > 0 ? (
+              <div className="flex items-center justify-between w-full gap-2">
+                <span className="text-[#85522b] font-bold flex items-center gap-1 truncate text-xs">
+                  <ShoppingCart className="w-3.5 h-3.5 shrink-0 text-[#85522b]" />
+                  <span className="truncate">
+                    Panier client mémorisé ({getCustomerCartCount(selectedCustomerId)} art.)
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => loadCustomerCart(selectedCustomerId)}
+                  className="touch-btn px-2.5 py-1 bg-[#234931] hover:bg-[#1a3825] text-white rounded-lg font-bold text-[11px] shrink-0 cursor-pointer shadow-2xs"
+                  title="Afficher les articles du client dans ce panier"
+                >
+                  Charger articles
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between w-full gap-2">
+                <span className="text-[#786c5e] text-[11px] truncate">
+                  {cart.length > 0 ? 'Mémoriser ce panier pour ce client :' : 'Panier client vide'}
+                </span>
+                {cart.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => saveCurrentCartToCustomer(selectedCustomerId)}
+                    className="touch-btn px-2.5 py-1 bg-[#85522b] hover:bg-[#6e3e1c] text-[#fff6ec] rounded-lg font-bold text-[11px] shrink-0 cursor-pointer shadow-2xs flex items-center gap-1"
+                    title="Sauvegarder le panier actuel dans le profil de ce client"
+                  >
+                    <Bookmark className="w-3 h-3" />
+                    <span>Mémoriser</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Global Discount toggle */}
         <div className="flex items-center justify-between text-xs pt-0.5">

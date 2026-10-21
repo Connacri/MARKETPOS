@@ -604,10 +604,17 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsCartDrawerOpen(true);
       posSounds.playCartAdd();
 
+      const totalItems = items.reduce((s, it) => s + it.quantity, 0);
+      const totalAmount = items.reduce(
+        (s, it) => s + it.unitPrice * it.quantity * (1 - it.discountPercent / 100),
+        0
+      );
+      const formattedAmount = new Intl.NumberFormat('fr-DZ', { maximumFractionDigits: 0 }).format(totalAmount) + ' DA';
+
       showToast(
         items.length > 0
-          ? `🛒 Panier de ${cust?.name || 'Client'} affiché (${items.length} article(s))`
-          : `🍃 Panier de ${cust?.name || 'Client'} ouvert dans Panier ${targetId} (vide, ajoutez des articles)`,
+          ? `🛒 Panier de ${cust?.name || 'Client'} affiché : ${totalItems} article(s) (${formattedAmount}) dans Panier ${targetId}`
+          : `🍃 Panier de ${cust?.name || 'Client'} ouvert dans Panier ${targetId} (panier vide, prêt pour ajout)`,
         items.length > 0 ? 'success' : 'info'
       );
     },
@@ -648,40 +655,51 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [customerCarts]
   );
 
-  // Universal keyboard shortcut listener for dual cart switching (F3, Alt+P, Alt+1, Alt+2)
+  // Universal keyboard shortcut listener for dual cart switching (F3, F4, Alt+P, Alt+C, Alt+1, Alt+2)
   useEffect(() => {
     const handleUniversalKeyDown = (e: KeyboardEvent) => {
-      // 1. F3: Universal switch between Panier 1 and Panier 2
-      if (e.key === 'F3') {
+      // 1. F3 or F4: Universal switch between Panier 1 and Panier 2
+      if (e.key === 'F3' || e.key === 'F4') {
         e.preventDefault();
+        e.stopPropagation();
         switchCart();
         return;
       }
 
-      // 2. Alt + P: Universal switch
-      if (e.altKey && (e.key === 'p' || e.key === 'P')) {
+      // 2. Alt + P or Alt + C: Universal switch
+      if (e.altKey && (e.key === 'p' || e.key === 'P' || e.key === 'c' || e.key === 'C')) {
         e.preventDefault();
+        e.stopPropagation();
         switchCart();
         return;
       }
 
-      // 3. Alt + 1: Switch directly to Panier 1
-      if (e.altKey && (e.key === '1' || e.code === 'Digit1')) {
+      // 3. Alt + 1: Switch directly to Panier 1 (supports standard numbers, Numpad, and French AZERTY '&')
+      if (
+        e.altKey &&
+        (e.key === '1' || e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '&')
+      ) {
         e.preventDefault();
+        e.stopPropagation();
         switchCart(1);
         return;
       }
 
-      // 4. Alt + 2: Switch directly to Panier 2
-      if (e.altKey && (e.key === '2' || e.code === 'Digit2')) {
+      // 4. Alt + 2: Switch directly to Panier 2 (supports standard numbers, Numpad, and French AZERTY 'é')
+      if (
+        e.altKey &&
+        (e.key === '2' || e.code === 'Digit2' || e.code === 'Numpad2' || e.key === 'é')
+      ) {
         e.preventDefault();
+        e.stopPropagation();
         switchCart(2);
         return;
       }
     };
 
-    window.addEventListener('keydown', handleUniversalKeyDown);
-    return () => window.removeEventListener('keydown', handleUniversalKeyDown);
+    // Capture phase ensures shortcuts work reliably regardless of currently focused input
+    window.addEventListener('keydown', handleUniversalKeyDown, true);
+    return () => window.removeEventListener('keydown', handleUniversalKeyDown, true);
   }, [switchCart]);
 
   // Helper to update active cart items and keep customer cart synced

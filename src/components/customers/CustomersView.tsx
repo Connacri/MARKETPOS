@@ -123,13 +123,18 @@ export const CustomersView: React.FC = () => {
 
       if (!matchesSearch) return false;
 
+      if (tierFilter === 'HAS_CART') return getCustomerCartCount(c.id) > 0;
       const loyalty = getCustomerLoyalty(c);
       if (tierFilter === 'GOLD') return loyalty.tier === 'Or' || loyalty.tier === 'Diamant';
       if (tierFilter === 'SILVER') return loyalty.tier === 'Argent';
       if (tierFilter === 'BRONZE') return loyalty.tier === 'Bronze';
       return true;
     });
-  }, [customers, sales, searchQuery, tierFilter]);
+  }, [customers, sales, searchQuery, tierFilter, getCustomerCartCount]);
+
+  const pendingCartsCount = useMemo(() => {
+    return customers.filter((c) => getCustomerCartCount(c.id) > 0).length;
+  }, [customers, getCustomerCartCount]);
 
   // Total loyalty points in store
   const totalLoyaltyPoints = useMemo(() => {
@@ -229,6 +234,18 @@ export const CustomersView: React.FC = () => {
           </button>
           <button
             type="button"
+            onClick={() => setTierFilter('HAS_CART')}
+            className={`touch-btn px-3 py-1.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              tierFilter === 'HAS_CART'
+                ? 'bg-[#234931] text-white border-[#234931] shadow-2xs'
+                : 'sherwood-btn-outline'
+            }`}
+          >
+            <ShoppingCart className="w-3.5 h-3.5 text-amber-500" />
+            <span>Paniers en attente ({pendingCartsCount})</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setTierFilter('GOLD')}
             className={`touch-btn px-3 py-1.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
               tierFilter === 'GOLD'
@@ -271,6 +288,12 @@ export const CustomersView: React.FC = () => {
         {filteredCustomers.map((cust, idx) => {
           const loyalty = getCustomerLoyalty(cust);
           const avatar = villagerAvatars[idx % villagerAvatars.length];
+          const custCartItems = getCustomerCart(cust.id);
+          const custCartCount = getCustomerCartCount(cust.id);
+          const custCartTotalTTC = custCartItems.reduce(
+            (acc, it) => acc + it.unitPrice * it.quantity * (1 - it.discountPercent / 100),
+            0
+          );
 
           return (
             <div
@@ -339,6 +362,74 @@ export const CustomersView: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Dedicated Customer Cart Box with item count, preview, and load action */}
+                <div
+                  className={`mt-3.5 p-3 rounded-2xl border transition-all ${
+                    custCartCount > 0
+                      ? 'bg-[#edf5ec] border-[#b8dcba] shadow-2xs'
+                      : 'bg-[#f7f2e7]/80 border-[#e5dcce]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="font-bold text-xs text-[#234931] flex items-center gap-1.5">
+                      <ShoppingCart className="w-4 h-4 text-[#85522b]" />
+                      Panier Client
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${
+                        custCartCount > 0 ? 'bg-[#234931] text-[#fdfbf7]' : 'bg-[#e2d7c2] text-[#605547]'
+                      }`}
+                    >
+                      {custCartCount} article{custCartCount > 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  {custCartCount > 0 ? (
+                    <div className="space-y-2">
+                      <div className="text-[11px] text-[#483d31] font-medium space-y-0.5 bg-white/70 p-2 rounded-xl border border-[#cbe0cb]">
+                        {custCartItems.slice(0, 2).map((it, i) => (
+                          <div key={i} className="flex justify-between items-center gap-1">
+                            <span className="truncate">
+                              • {it.quantity}× {it.product.name}
+                            </span>
+                            <span className="font-mono font-bold shrink-0">
+                              {formatMoney(it.unitPrice * it.quantity * (1 - it.discountPercent / 100))}
+                            </span>
+                          </div>
+                        ))}
+                        {custCartItems.length > 2 && (
+                          <div className="text-[10px] text-[#85522b] font-bold pt-0.5">
+                            + {custCartItems.length - 2} autre(s) article(s)...
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => loadCustomerCart(cust.id)}
+                        className="touch-btn w-full py-2 px-3 bg-[#234931] hover:bg-[#1a3825] active:scale-[0.99] text-[#fdfbf7] rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-all"
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5 text-emerald-300" />
+                        <span>
+                          Afficher dans le panier ({custCartCount} art. • {formatMoney(custCartTotalTTC)})
+                        </span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2 pt-0.5">
+                      <span className="text-[11px] text-[#786c5e] italic">Aucun article mémorisé</span>
+                      <button
+                        type="button"
+                        onClick={() => loadCustomerCart(cust.id)}
+                        className="touch-btn px-2.5 py-1 text-[11px] font-bold text-[#234931] hover:bg-[#eaf2e8] rounded-lg transition-colors cursor-pointer border border-[#cbe0cb]"
+                      >
+                        Ouvrir panier
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Contact info */}
                 <div className="mt-3 space-y-1.5 text-xs text-[#483d31]">
                   {cust.phone && (
@@ -375,13 +466,11 @@ export const CustomersView: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedCustomerId(cust.id);
-                    setActiveView('pos');
-                  }}
-                  className="touch-btn px-3 py-1.5 sherwood-btn-forest text-xs font-bold whitespace-nowrap"
+                  onClick={() => loadCustomerCart(cust.id)}
+                  className="touch-btn px-3 py-1.5 sherwood-btn-forest text-xs font-bold whitespace-nowrap flex items-center gap-1.5"
                 >
-                  Ouvrir Caisse
+                  <ShoppingCart className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>{custCartCount > 0 ? `Afficher Panier (${custCartCount})` : 'Ouvrir Caisse'}</span>
                 </button>
               </div>
             </div>

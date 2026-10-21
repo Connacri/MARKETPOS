@@ -33,6 +33,8 @@ export const PosRegisterView: React.FC = () => {
     cartSummary,
     isCartDrawerOpen,
     setIsCartDrawerOpen,
+    activeCartId,
+    switchCart,
   } = usePos();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -512,6 +514,15 @@ export const PosRegisterView: React.FC = () => {
                 <kbd className="font-mono font-black text-xs bg-emerald-50 text-emerald-800 px-1 rounded">F2</kbd>
                 <span className="text-ink-700">Encaisser</span>
               </button>
+              <button
+                type="button"
+                onClick={() => switchCart()}
+                className="inline-flex items-center gap-1 bg-white hover:bg-sand-100 px-2 py-0.5 rounded-lg border border-sand-200 shadow-2xs transition-colors cursor-pointer"
+                title="Basculer instantanément entre Panier 1 et Panier 2 (F3 ou Alt+P)"
+              >
+                <kbd className="font-mono font-black text-xs bg-amber-50 text-amber-900 px-1 rounded">F3</kbd>
+                <span className="text-ink-700">Panier {activeCartId === 1 ? 'P1 ➜ P2' : 'P2 ➜ P1'}</span>
+              </button>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 text-ink-700">
                 <kbd className="font-mono font-black text-xs bg-rose-50 text-rose-800 px-1 rounded">Échap</kbd>
                 <span>Fermer</span>
@@ -769,6 +780,21 @@ export const PosRegisterView: React.FC = () => {
                   <kbd className="font-mono font-bold text-xs bg-emerald-50 text-emerald-800 px-2 py-1 rounded-lg border border-emerald-300 shadow-2xs shrink-0">
                     F2
                   </kbd>
+                </div>
+
+                <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-amber-50/70 border border-amber-200">
+                  <div>
+                    <div className="font-bold text-xs text-amber-950">Basculer entre les 2 Paniers (Caisse Double)</div>
+                    <div className="text-xs text-amber-800 mt-0.5">
+                      Bascule instantanément entre Panier 1 et Panier 2 sans perdre les articles saisis.
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 items-end shrink-0">
+                    <kbd className="font-mono font-bold text-xs bg-amber-100 text-amber-900 px-2 py-1 rounded-lg border border-amber-300 shadow-2xs">
+                      F3 / Alt+P
+                    </kbd>
+                    <span className="text-[10px] font-mono text-amber-700">Alt+1 / Alt+2</span>
+                  </div>
                 </div>
 
                 <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-sand-50 border border-sand-200/80">
