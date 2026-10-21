@@ -19,6 +19,10 @@ import {
   ArrowUpRight,
   Tag,
   ShoppingBag,
+  Zap,
+  ShoppingCart,
+  PlusCircle,
+  FileText,
 } from 'lucide-react';
 import type { PaymentMethod } from '../../types';
 
@@ -207,7 +211,7 @@ const EmptyState: React.FC<{ text: string }> = ({ text }) => (
 );
 
 export const DashboardView: React.FC = () => {
-  const { sales, products, categories, setActiveView } = usePos();
+  const { sales, products, categories, setActiveView, setOpenNewProductModal } = usePos();
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('today');
   const [chartTab, setChartTab] = useState<'d3-trend' | 'bar-breakdown'>('d3-trend');
 
@@ -424,6 +428,173 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ============================================================
+          QUICK ACCESS CARDS GRID: Frequently Used Tasks
+          Responsive 1 col (mobile), 2 cols (tablet), 4 cols (desktop)
+          ============================================================ */}
+      <section aria-label="Raccourcis d'accès rapide" className="space-y-3.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#234931] text-[#fdfbf7] flex items-center justify-center shadow-xs">
+              <Zap className="w-4 h-4 text-[#86efac]" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm sm:text-base text-[#1f3d29] font-serif-title leading-tight">
+                Accès Rapide • Quick Access
+              </h3>
+              <p className="text-xs text-[#6e6354] font-medium">
+                Raccourcis vers vos actions prioritaires du quotidien
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+          {/* Card 1: New Sale (Nouvelle Vente) */}
+          <button
+            type="button"
+            onClick={() => setActiveView('pos')}
+            className="sherwood-card p-4.5 sm:p-5 text-left w-full transition-all duration-200 group relative flex flex-col justify-between hover:border-[#234931]/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer focus-visible:ring-4 focus-visible:ring-forest-700/40 bg-gradient-to-br from-[#fdfbf7] to-[#f2f7f2]"
+            aria-label="Nouvelle Vente : ouvrir le terminal de caisse POS"
+          >
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="sherwood-badge-forest text-[11px] font-bold">
+                  Caisse POS
+                </span>
+                <div className="w-9 h-9 rounded-xl bg-[#234931] text-[#fdfbf7] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <ShoppingCart className="w-4 h-4 text-[#86efac]" />
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-base text-[#1f3d29] font-serif-title leading-tight group-hover:text-[#234931] transition-colors">
+                  Nouvelle Vente
+                </h4>
+                <p className="text-xs text-[#6e6354] mt-1 line-clamp-2 leading-relaxed">
+                  Ouvrir le terminal de caisse, scanner des articles et enregistrer un encaissement.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-3 mt-4 border-t border-[#e7ddca] flex items-center justify-between text-xs font-bold text-[#234931]">
+              <span className="flex items-center gap-1 group-hover:underline">
+                <span>Lancer la caisse</span>
+              </span>
+              <ArrowUpRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </div>
+          </button>
+
+          {/* Card 2: Add Product (Ajouter un Produit) */}
+          <button
+            type="button"
+            onClick={() => {
+              setOpenNewProductModal(true);
+              setActiveView('catalog');
+            }}
+            className="sherwood-card p-4.5 sm:p-5 text-left w-full transition-all duration-200 group relative flex flex-col justify-between hover:border-[#85522b]/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer focus-visible:ring-4 focus-visible:ring-wood-600/40 bg-gradient-to-br from-[#fdfbf7] to-[#fbf5ee]"
+            aria-label="Ajouter un Produit : créer une nouvelle référence de stock"
+          >
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="sherwood-badge-wood text-[11px] font-bold">
+                  Stock & Rayon
+                </span>
+                <div className="w-9 h-9 rounded-xl bg-[#85522b] text-[#fff6ec] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <PlusCircle className="w-4 h-4 text-[#fcdbb6]" />
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-base text-[#482611] font-serif-title leading-tight group-hover:text-[#85522b] transition-colors">
+                  Ajouter un Produit
+                </h4>
+                <p className="text-xs text-[#6e6354] mt-1 line-clamp-2 leading-relaxed">
+                  Créer un article dans l'inventaire avec code-barres, prix de vente et seuil d'alerte.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-3 mt-4 border-t border-[#e7ddca] flex items-center justify-between text-xs font-bold text-[#85522b]">
+              <span className="flex items-center gap-1 group-hover:underline">
+                <span>Créer une référence</span>
+              </span>
+              <ArrowUpRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </div>
+          </button>
+
+          {/* Card 3: View Reports (Consulter les Rapports) */}
+          <button
+            type="button"
+            onClick={() => setActiveView('sales')}
+            className="sherwood-card p-4.5 sm:p-5 text-left w-full transition-all duration-200 group relative flex flex-col justify-between hover:border-[#234931]/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer focus-visible:ring-4 focus-visible:ring-forest-700/40 bg-gradient-to-br from-[#fdfbf7] to-[#f7f2e7]"
+            aria-label="Consulter les Rapports : voir l'historique des ventes et factures"
+          >
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="sherwood-badge-forest text-[11px] font-bold">
+                  Factures & Ventes
+                </span>
+                <div className="w-9 h-9 rounded-xl bg-[#2d563a] text-[#fdfbf7] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <FileText className="w-4 h-4 text-[#bbf7d0]" />
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-base text-[#1f3d29] font-serif-title leading-tight group-hover:text-[#234931] transition-colors">
+                  Consulter les Rapports
+                </h4>
+                <p className="text-xs text-[#6e6354] mt-1 line-clamp-2 leading-relaxed">
+                  Consulter les tickets enregistrés, réimprimer les reçus 80mm et analyser le journal.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-3 mt-4 border-t border-[#e7ddca] flex items-center justify-between text-xs font-bold text-[#234931]">
+              <span className="flex items-center gap-1 group-hover:underline">
+                <span>Voir les factures</span>
+              </span>
+              <ArrowUpRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </div>
+          </button>
+
+          {/* Card 4: Fichier Clients (Customer Directory) */}
+          <button
+            type="button"
+            onClick={() => setActiveView('customers')}
+            className="sherwood-card p-4.5 sm:p-5 text-left w-full transition-all duration-200 group relative flex flex-col justify-between hover:border-[#234931]/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer focus-visible:ring-4 focus-visible:ring-forest-700/40 bg-gradient-to-br from-[#fdfbf7] to-[#f3f6f9]"
+            aria-label="Fichier Clients : consulter le carnet d'adresses et la fidélité"
+          >
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="sherwood-badge-forest text-[11px] font-bold">
+                  Comptes & Fidélité
+                </span>
+                <div className="w-9 h-9 rounded-xl bg-[#1e3a5f] text-[#fdfbf7] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <Users className="w-4 h-4 text-[#93c5fd]" />
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-base text-[#1e3a5f] font-serif-title leading-tight group-hover:text-[#1e3a5f] transition-colors">
+                  Fichier Clients
+                </h4>
+                <p className="text-xs text-[#6e6354] mt-1 line-clamp-2 leading-relaxed">
+                  Gérer les coordonnées clients, soldes fidélité clochettes et historique d'achats.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-3 mt-4 border-t border-[#e7ddca] flex items-center justify-between text-xs font-bold text-[#1e3a5f]">
+              <span className="flex items-center gap-1 group-hover:underline">
+                <span>Ouvrir les clients</span>
+              </span>
+              <ArrowUpRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </div>
+          </button>
+        </div>
+      </section>
 
       {/* ============================================================
           THE 4 REAL KPI CARDS: Responsive & Perfectly Aligned

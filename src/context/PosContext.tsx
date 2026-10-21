@@ -54,6 +54,8 @@ interface PosContextType {
   // Navigation & Active View
   activeView: ViewType;
   setActiveView: (view: ViewType) => void;
+  openNewProductModal: boolean;
+  setOpenNewProductModal: (open: boolean) => void;
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
   isCartDrawerOpen: boolean;
@@ -167,6 +169,7 @@ const STORAGE_KEYS = {
 
 export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeView, setActiveView] = useState<ViewType>('dashboard');
+  const [openNewProductModal, setOpenNewProductModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
 
@@ -817,6 +820,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         activeView,
         setActiveView,
+        openNewProductModal,
+        setOpenNewProductModal,
         isMobileMenuOpen,
         setIsMobileMenuOpen,
         isCartDrawerOpen,

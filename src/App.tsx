@@ -16,7 +16,7 @@ const MainContent: React.FC = () => {
   const { activeView } = usePos();
 
   return (
-    <main className="p-3 sm:p-6 pb-24 lg:pb-8 flex-1 overflow-x-hidden">
+    <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 pb-28 lg:pb-10 flex-1 overflow-x-hidden">
       {activeView === 'dashboard' && <DashboardView />}
       {activeView === 'pos' && <PosRegisterView />}
       {activeView === 'catalog' && <ProductCatalogView />}

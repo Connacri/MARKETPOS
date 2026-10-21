@@ -35,6 +35,8 @@ export const ProductCatalogView: React.FC = () => {
     addProduct,
     setActiveView,
     setIsCartDrawerOpen,
+    openNewProductModal,
+    setOpenNewProductModal,
   } = usePos();
 
   // Search & Filter state
@@ -47,6 +49,14 @@ export const ProductCatalogView: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
+
+  // Automatically trigger new product modal if requested via Quick Access
+  React.useEffect(() => {
+    if (openNewProductModal) {
+      setIsCreatingNew(true);
+      setOpenNewProductModal(false);
+    }
+  }, [openNewProductModal, setOpenNewProductModal]);
 
   // Format currency
   const formatMoney = (val: number) => {
