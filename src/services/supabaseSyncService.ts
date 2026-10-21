@@ -20,9 +20,14 @@ export interface SyncLogEntry {
 
 const STORAGE_KEY_SUPABASE = 'pos_supabase_config_v1';
 
+// Valeurs injectées au build depuis GitHub Secrets (voir .github/workflows/) ou .env local.
+// Aucune clé n'est stockée dans le dépôt.
+const ENV_SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+const ENV_SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+
 export const DEFAULT_SUPABASE_CONFIG: SupabaseConfig = {
-  url: 'https://xyzcompany.supabase.co',
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvcy1wcm8iLCJyb2xlIjoiYW5vbiJ9...',
+  url: ENV_SUPABASE_URL || 'https://xyzcompany.supabase.co',
+  anonKey: ENV_SUPABASE_ANON_KEY,
   syncIntervalMinutes: 5,
   syncDirection: 'BIDIRECTIONAL',
   autoSyncEnabled: true,

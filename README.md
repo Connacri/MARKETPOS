@@ -2,6 +2,8 @@
 
 Système de Point de Vente (POS), gestion des stocks, facturation et synchronisation cloud multi-postes conçu pour une utilisation intensive en magasin ou restaurant.
 
+🌐 **[Application Web (GitHub Pages)](https://connacri.github.io/MARKETPOS/)** · ⬇️ **[Télécharger l'APK](../../releases/latest)** · 📦 **[Toutes les releases](../../releases)**
+
 ---
 
 ## 🛠 Stack Technique Réelle
@@ -84,20 +86,27 @@ npm run build
 
 ---
 
-## 🌿 Architecture de Branche Unique (`main`)
+## 🌿 CI/CD & Releases
 
-Le projet est entièrement unifié sur **une seule et unique branche principale : `main`**.
-Tous les workflows GitHub Actions (Build Web, Tests CI, Déploiement GitHub Pages, Génération & Publication des APK Android dans GitHub Releases) sont configurés pour s'exécuter exclusivement sur `main`.
+Tout est automatisé sur la branche **`main`** :
 
-Si votre dépôt distant GitHub possède encore une ancienne branche `master` ou `develop`, unifiez et supprimez la branche redondante avec :
-```bash
-# S'assurer d'être sur main et pousser l'ensemble des fichiers
-git checkout main
-git push -u origin main
+| Workflow | Rôle |
+| --- | --- |
+| `ci.yml` | Lint TypeScript + build Web sur chaque push / PR |
+| `deploy-pages.yml` | Build et déploiement du Web sur GitHub Pages |
+| `release.yml` | Version → build APK/AAB signés → vérification cryptographique → GitHub Releases |
+| `codeql.yml` | Analyse de sécurité statique |
 
-# Supprimer l'ancienne branche distante sur GitHub
-git push origin --delete master 2>/dev/null || true
-```
+Le workflow `release.yml` :
+
+1. calcule `versionName` / `versionCode` (`v1.0.<run_number>` par défaut, ou version manuelle) ;
+2. reconstruit le keystore depuis `ANDROID_KEYSTORE_BASE64` ;
+3. compile l'APK et l'AAB **signés** (v1 + v2), sans jamais générer de keystore de secours ;
+4. vérifie la signature (`apksigner`, `jarsigner`) et l'empreinte SHA-256 du certificat ;
+5. publie `pos-module-pro-vX.Y.Z.apk`, `.aab`, le ZIP Web et `SHA256SUMS.txt` dans GitHub Releases ;
+6. supprime le keystore du runner, même en cas d'échec.
+
+Les secrets (keystore, mots de passe, clés Supabase) sont documentés dans **[GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md)** et ne sont jamais commités.
 
 ---
 

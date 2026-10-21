@@ -1,229 +1,273 @@
-name: Release
+name: Release Android (APK + AAB signés)
 
+# Pipeline aligné sur le modèle CyberScrape :
+#   version -> build/signature -> publication GitHub Releases
 on:
   push:
     branches: [main]
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version (ex: 1.0.1). Laisser vide pour incrémenter automatiquement.'
+        description: "Version de release (ex: 1.0.1). Vide = 1.0.<run_number>."
         required: false
-        default: ''
+        type: string
+        default: ""
+      version_code:
+        description: "versionCode Android (entier croissant). Vide = numéro de run."
+        required: false
+        type: string
+        default: ""
+      publish_release:
+        description: "Publier les artefacts sur GitHub Releases."
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
-  group: release
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
-  release:
-    name: Créer la release Android (APK & AAB signés) et Déploiement Web
+  version:
+    name: Calculer la version
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      version_code: ${{ steps.v.outputs.version_code }}
+      tag: ${{ steps.v.outputs.tag }}
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Configuration de Node.js (v22 LTS)
+      - name: Déterminer version, versionCode et tag
+        id: v
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_VERSION_CODE: ${{ github.event.inputs.version_code }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG#v}"
+          elif [[ -n "${INPUT_VERSION}" ]]; then
+            VERSION="${INPUT_VERSION#v}"
+            TAG="v${VERSION}"
+          else
+            BASE_VERSION=$(node -p "require('./package.json').version || '1.0.0'")
+            MAJOR_MINOR=$(echo "$BASE_VERSION" | cut -d. -f1,2)
+            VERSION="${MAJOR_MINOR}.${RUN_NUMBER}"
+            TAG="v${VERSION}"
+          fi
+
+          # Nettoyage strict : pas d'espaces, slash ni caractère exotique dans le tag
+          VERSION=$(echo "$VERSION" | tr -d '\r\n\t ' | sed 's/[^a-zA-Z0-9._-]//g')
+          if [[ -z "$VERSION" || "$VERSION" == *".."* ]]; then
+            echo "::error::Version invalide : '$VERSION'"
+            exit 1
+          fi
+          TAG="v${VERSION}"
+
+          VERSION_CODE="${INPUT_VERSION_CODE:-$RUN_NUMBER}"
+          if ! [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]; then
+            echo "::error::versionCode invalide : '$VERSION_CODE' (entier attendu)"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Release : $VERSION (versionCode $VERSION_CODE, tag $TAG)"
+
+  build:
+    name: Build, signature et publication
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configuration Node.js 22 (LTS)
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Configuration de Java JDK 17
+      # Capacitor 8 / AGP 8.13 compilent en Java 21 : JDK 17 provoquait "invalid source release: 21"
+      - name: Configuration Java 21 (Temurin)
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
 
       - name: Installation des dépendances NPM
         run: |
           if [ -f package-lock.json ]; then
-            npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+            npm ci --no-audit || npm install --legacy-peer-deps --no-audit
           else
-            npm install --legacy-peer-deps
+            npm install --legacy-peer-deps --no-audit
           fi
 
-      - name: Vérification des types TypeScript
+      - name: Vérification TypeScript
         run: npm run lint
 
-      - name: Build de production Web
+      - name: Build Web de production
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
 
-      - name: Déterminer la version
-        id: version
-        shell: bash
-        env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
+      - name: Synchronisation Capacitor (android)
         run: |
-          set -eo pipefail
-          VERSION="${INPUT_VERSION:-}"
-          if [ -z "$VERSION" ]; then
-            PKG_VER=$(node -e "const fs = require('fs'); try { const p = JSON.parse(fs.readFileSync('package.json', 'utf8')); process.stdout.write(String(p.version || '1.0.0').trim()); } catch(e) { process.stdout.write('1.0.0'); }")
-            COMMITS_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo "1")
-            COMMITS_COUNT=$(echo "$COMMITS_COUNT" | tr -d '[:space:]')
-            VERSION="${PKG_VER}.${COMMITS_COUNT}"
-          fi
-          # Nettoyer et valider le format de version (sans retours chariots ni espaces)
-          CLEAN_VERSION=$(echo "$VERSION" | tr -d '\r\n\t ' | sed 's/[^a-zA-Z0-9._-]//g')
-          if [ -z "$CLEAN_VERSION" ] || [ "$CLEAN_VERSION" = "undefined" ] || [[ "$CLEAN_VERSION" == undefined* ]]; then
-            CLEAN_VERSION="1.0.0"
-          fi
-          echo "version=${CLEAN_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=v${CLEAN_VERSION}" >> "$GITHUB_OUTPUT"
-
-      - name: Créer l'archive zip Web pour déploiement local / Cloud
-        shell: bash
-        env:
-          RELEASE_VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          set -eo pipefail
-          VER="${RELEASE_VERSION:-1.0.0}"
-          cd dist && zip -r "../pos-module-web-${VER}.zip" . && cd ..
-
-      - name: Déploiement automatique Web sur GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload de l'artefact Web pour Pages
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist'
-
-      - name: Mise à jour en ligne du site Web (GitHub Pages)
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-      - name: Synchroniser les assets avec le projet Android Capacitor
-        run: |
-          if [ ! -d "android" ]; then
-            echo "Création initiale de la plateforme Android Capacitor..."
-            npx cap add android
-          fi
           npx cap sync android
+          chmod +x android/gradlew
 
-      - name: Préparer le Keystore Android de signature Release
+      - name: Préparer le keystore de signature (GitHub Secrets)
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'SherwoodPos2026SecretKey!' }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'marketpos' }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.KEYSTORE_PASSWORD || 'SherwoodPos2026SecretKey!' }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          set -eo pipefail
-          mkdir -p android/app
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "Décodage du keystore de signature depuis GitHub Secrets..."
-            echo "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > android/app/release.keystore
-          elif [ -f "android/app/release.keystore" ]; then
-            echo "Keystore local existant détecté."
-          else
-            echo "Génération automatique d'un keystore de release sécurisé (fallback)..."
-            keytool -genkey -v -keystore android/app/release.keystore \
-              -alias "$KEY_ALIAS" \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass "$KEYSTORE_PASSWORD" \
-              -keypass "$KEY_PASSWORD" \
-              -dname "CN=Connacri MARKETPOS, OU=POS Division, O=Connacri, L=Algiers, ST=Algiers, C=DZ"
+          set -euo pipefail
+          missing=0
+          for name in ANDROID_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Secret GitHub manquant : $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Configurez les secrets Android avant de relancer (voir GITHUB_SECRETS_SETUP.md)."
+            exit 1
           fi
-          ls -lh android/app/release.keystore
 
-      - name: Rendre gradlew exécutable
-        run: |
-          chmod +x android/gradlew
+          mkdir -p android/app
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > android/app/release.keystore
+          chmod 600 android/app/release.keystore
 
-      - name: Compiler les packages Android (APK & AAB signés pour Google Play)
+          # Valide réellement le keystore et l'alias avant de lancer Gradle
+          keytool -list -keystore android/app/release.keystore \
+            -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null
+          echo "Keystore valide (alias: $KEY_ALIAS)."
+
+      - name: Compiler l'APK et l'AAB release signés
         working-directory: android
         env:
           ANDROID_KEYSTORE_PATH: release.keystore
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'SherwoodPos2026SecretKey!' }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'marketpos' }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.KEYSTORE_PASSWORD || 'SherwoodPos2026SecretKey!' }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          VERSION_NAME: ${{ needs.version.outputs.version }}
+          VERSION_CODE: ${{ needs.version.outputs.version_code }}
         run: |
-          echo "1. Compilation de l'APK Release signé..."
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --stacktrace \
+            -PversionName="$VERSION_NAME" \
+            -PversionCode="$VERSION_CODE"
 
-          echo "2. Compilation du bundle AAB Release signé (Google Play Store)..."
-          ./gradlew bundleRelease --no-daemon
+      - name: Vérifier la signature et l'identité du certificat
+        working-directory: android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release.apk"
+          AAB="app/build/outputs/bundle/release/app-release.aab"
+          [ -f "$APK" ] || { echo "::error::APK release absent"; exit 1; }
+          [ -f "$AAB" ] || { echo "::error::AAB release absent"; exit 1; }
 
-          echo "3. Compilation de l'APK Debug universel..."
-          ./gradlew assembleDebug --no-daemon
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* 2>/dev/null | sort -V | tail -n1)
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
 
-      - name: Organiser et nommer les livrables APK, AAB et Web
+          EXPECTED=$(keytool -list -v -keystore app/release.keystore -storepass "$KEYSTORE_PASSWORD" \
+            -alias "$KEY_ALIAS" | awk -F': ' '/SHA256:/ {print $2; exit}' | tr -d ':' | tr 'A-F' 'a-f')
+          ACTUAL=$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK" \
+            | awk -F': ' '/certificate SHA-256 digest/ {print $2; exit}' | tr -d ':' | tr 'A-F' 'a-f')
+          if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
+            echo "::error::L'APK n'est pas signé avec le keystore attendu (attendu=$EXPECTED, obtenu=$ACTUAL)"
+            exit 1
+          fi
+          echo "Certificat APK conforme : SHA-256 $EXPECTED"
+
+          JARSIGNER_OUTPUT=$(jarsigner -verify "$AAB")
+          echo "$JARSIGNER_OUTPUT"
+          grep -q "jar verified" <<< "$JARSIGNER_OUTPUT" \
+            || { echo "::error::Signature AAB invalide"; exit 1; }
+          echo "Signature AAB vérifiée."
+
+      - name: Préparer les livrables et les empreintes SHA-256
         shell: bash
         env:
-          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
-          set -eo pipefail
-          VER="${RELEASE_VERSION:-1.0.0}"
+          set -euo pipefail
           mkdir -p release-artifacts
+          cp android/app/build/outputs/apk/release/app-release.apk \
+            "release-artifacts/pos-module-pro-v${VERSION}.apk"
+          cp android/app/build/outputs/bundle/release/app-release.aab \
+            "release-artifacts/pos-module-pro-v${VERSION}.aab"
+          (cd dist && zip -qr "../pos-module-web-v${VERSION}.zip" .)
+          mv "pos-module-web-v${VERSION}.zip" release-artifacts/
 
-          # 1. Copier et nommer l'APK signé Release principal
-          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
-            cp android/app/build/outputs/apk/release/app-release.apk "release-artifacts/pos-module-pro-v${VER}.apk"
-            cp android/app/build/outputs/apk/release/app-release.apk "release-artifacts/pos-module-pro-v${VER}-signed-release.apk"
-          elif [ -f android/app/build/outputs/apk/release/app-release-unsigned.apk ]; then
-            cp android/app/build/outputs/apk/release/app-release-unsigned.apk "release-artifacts/pos-module-pro-v${VER}-unsigned.apk"
-          fi
-
-          # 2. Copier et nommer le bundle Android App Bundle (AAB) signé pour Google Play Store
-          if [ -f android/app/build/outputs/bundle/release/app-release.aab ]; then
-            cp android/app/build/outputs/bundle/release/app-release.aab "release-artifacts/pos-module-pro-v${VER}-signed.aab"
-            cp android/app/build/outputs/bundle/release/app-release.aab "release-artifacts/pos-module-pro-v${VER}.aab"
-          fi
-
-          # 3. Copier l'APK universel de Debug pour tests rapides
-          if [ -f android/app/build/outputs/apk/debug/app-debug.apk ]; then
-            cp android/app/build/outputs/apk/debug/app-debug.apk "release-artifacts/pos-module-pro-v${VER}-debug.apk"
-          fi
-
-          # 4. Déplacer l'archive Web
-          cp "pos-module-web-${VER}.zip" release-artifacts/
-
-          echo "Livrables préparés avec succès :"
+          (cd release-artifacts && sha256sum ./* > SHA256SUMS.txt)
           ls -lh release-artifacts/
+          cat release-artifacts/SHA256SUMS.txt
 
-      - name: Uploader les artefacts (APK & AAB) vers GitHub Actions
+      - name: Archiver les livrables dans le workflow
         uses: actions/upload-artifact@v4
         with:
-          name: pos-module-pro-android-release-${{ steps.version.outputs.version }}
-          path: |
-            release-artifacts/*.apk
-            release-artifacts/*.aab
+          name: pos-module-pro-v${{ needs.version.outputs.version }}
+          path: release-artifacts/
           retention-days: 30
 
-      - name: Publier la Release GitHub officielle avec APK, AAB et Web
+      - name: Publier la release GitHub officielle
+        if: github.event_name != 'workflow_dispatch' || inputs.publish_release
         uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: POS Module Pro v${{ steps.version.outputs.version }}
-          body: |
-            ## 🍃 POS Module Pro — Version ${{ steps.version.outputs.version }}
-
-            ### 📱 Application Android signée (Production & Store)
-            - **[pos-module-pro-v${{ steps.version.outputs.version }}.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/pos-module-pro-v${{ steps.version.outputs.version }}.apk)** : APK Release signé, installable directement sur tout smartphone, tablette ou terminal POS Android de caisse.
-            - **[pos-module-pro-v${{ steps.version.outputs.version }}-signed.aab](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/pos-module-pro-v${{ steps.version.outputs.version }}-signed.aab)** : Android App Bundle (AAB) officiel signé, prêt pour publication sur **Google Play Store**.
-            - **pos-module-pro-v${{ steps.version.outputs.version }}-debug.apk** : Version debug pour développeurs.
-
-            ### 🌐 Déploiement Web & PWA
-            - **Application en ligne :** [Accéder à la version Web hébergée](${{ steps.deployment.outputs.page_url }})
-            - **pos-module-web-${{ steps.version.outputs.version }}.zip** : Fichiers statiques complets prêts pour hébergement Cloud (Apache, Nginx, Docker).
-
-            ### ⚡ Fonctionnalités clés
-            - Signature officielle release v1 + v2 (Keystore PKCS12 / RSA 2048)
-            - Gestion des paniers multiples (Panier 1 / Panier 2) avec raccourcis `F2` / `Tab`
-            - Drawer et Sidebar rétractables en mode icônes sur desktop et tablette
-            - Sauvegarde et rechargement des paniers clients en 1 clic
-            - Moteur hors-ligne IndexedDB O(1) & synchronisation Cloud Supabase
-            - Impression thermique 80 mm ESC/POS avec prévisualisation
-          files: |
-            release-artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: POS Module Pro v${{ needs.version.outputs.version }}
+          draft: false
+          prerelease: false
+          make_latest: true
+          files: |
+            release-artifacts/*
+          body: |
+            ## POS Module Pro v${{ needs.version.outputs.version }}
+
+            ### Application Android signée
+            - **pos-module-pro-v${{ needs.version.outputs.version }}.apk** — APK release signé (v1 + v2), installable directement.
+            - **pos-module-pro-v${{ needs.version.outputs.version }}.aab** — Android App Bundle signé, prêt pour Google Play Console.
+
+            ### Web
+            - **pos-module-web-v${{ needs.version.outputs.version }}.zip** — build statique de production.
+            - Application en ligne : https://connacri.github.io/MARKETPOS/
+
+            ### Vérification
+            - **SHA256SUMS.txt** — empreintes SHA-256 de chaque livrable.
+            - Signature vérifiée par `apksigner` et `jarsigner` dans la CI.
+            - `versionCode` : `${{ needs.version.outputs.version_code }}`
+
+            _Build automatique depuis le commit ${{ github.sha }}._
+
+      # Le keystore ne doit jamais rester sur le runner, même en cas d'échec
+      - name: Supprimer le keystore temporaire
+        if: always()
+        shell: bash
+        run: |
+          rm -f android/app/release.keystore
+          rm -rf "$RUNNER_TEMP/keystore" 2>/dev/null || true

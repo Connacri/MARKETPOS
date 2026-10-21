@@ -20,10 +20,12 @@ android/*.iml
 .env
 .env.*
 !.env.example
+credentials/
 keystore_base64.txt
 upload-keystore.jks
 *.keystore
 *.jks
+*.p12
 release.keystore
 key.properties
 

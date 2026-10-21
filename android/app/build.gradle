@@ -1,5 +1,18 @@
 apply plugin: 'com.android.application'
 
+// Version injectée par la CI : ./gradlew -PversionCode=42 -PversionName=1.0.42
+def buildVersionCode = (project.findProperty("versionCode") ?: "1").toString().toInteger()
+def buildVersionName = (project.findProperty("versionName") ?: "1.0.0").toString()
+
+// Signature release : uniquement via variables d'environnement (aucun secret dans le dépôt)
+def releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH") ?: "release.keystore"
+def releaseKeystoreFile = file(releaseKeystorePath)
+def releaseStorePassword = System.getenv("KEYSTORE_PASSWORD")
+def releaseKeyAlias = System.getenv("KEY_ALIAS")
+def releaseKeyPassword = System.getenv("KEY_PASSWORD") ?: releaseStorePassword
+def hasReleaseSigning = releaseKeystoreFile.exists() &&
+        releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
 android {
     namespace = "com.connacri.posmodule"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +20,8 @@ android {
         applicationId "com.connacri.posmodule"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode buildVersionCode
+        versionName buildVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -17,19 +30,14 @@ android {
         }
     }
     signingConfigs {
-        release {
-            def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH") ?: "release.keystore"
-            def keystoreFile = file(keystorePath)
-            if (keystoreFile.exists()) {
-                storeFile keystoreFile
-                storePassword System.getenv("KEYSTORE_PASSWORD") ?: "SherwoodPos2026SecretKey!"
-                keyAlias System.getenv("KEY_ALIAS") ?: "marketpos"
-                keyPassword System.getenv("KEY_PASSWORD") ?: (System.getenv("KEYSTORE_PASSWORD") ?: "SherwoodPos2026SecretKey!")
-            } else {
-                storeFile signingConfigs.debug.storeFile
-                storePassword signingConfigs.debug.storePassword
-                keyAlias signingConfigs.debug.keyAlias
-                keyPassword signingConfigs.debug.keyPassword
+        if (hasReleaseSigning) {
+            release {
+                storeFile releaseKeystoreFile
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+                enableV1Signing true
+                enableV2Signing true
             }
         }
     }
@@ -37,8 +45,22 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
+    }
+}
+
+// Refuser explicitement toute compilation release non signée (protection contre les faux "APK release")
+gradle.taskGraph.whenReady { graph ->
+    def buildsRelease = graph.allTasks.any { task ->
+        task.name.toLowerCase().contains("release")
+    }
+    if (buildsRelease && !hasReleaseSigning) {
+        throw new GradleException(
+                "Signature release introuvable. Définissez ANDROID_KEYSTORE_PATH, " +
+                "KEYSTORE_PASSWORD, KEY_ALIAS et KEY_PASSWORD (GitHub Secrets en CI).")
     }
 }
 
