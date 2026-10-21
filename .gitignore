@@ -1,0 +1,41 @@
+# Node.js
+node_modules/
+dist/
+dist-ssr/
+*.local
+tsconfig.tsbuildinfo
+
+# AI Studio internals
+.aistudio/
+
+# Android / Capacitor builds
+android/app/build/
+android/build/
+android/.gradle/
+android/captures/
+android/.idea/
+android/*.iml
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+keystore_base64.txt
+upload-keystore.jks
+key.properties
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
