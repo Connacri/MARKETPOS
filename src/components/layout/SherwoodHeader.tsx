@@ -136,65 +136,57 @@ export const SherwoodHeader: React.FC = () => {
               )}
             </button>
 
-            {/* Dual Carts Quick Switcher Tabs (Accessible on every screen) */}
-            <div className="flex items-center p-0.5 bg-[#f3ede3] border border-[#e2d7c2] rounded-xl sm:rounded-2xl shrink-0">
+            {/* Visual Indicator of Active Cart (Panier 1 or Panier 2) with item count */}
+            <div
+              className={`flex items-center gap-1.5 p-1 rounded-xl sm:rounded-2xl border transition-all shadow-2xs shrink-0 ${
+                activeCartId === 1
+                  ? 'bg-[#edf5ec] border-[#b4dbb6] text-[#1b3d24]'
+                  : 'bg-[#faf0e6] border-[#e8c8a8] text-[#5c3014]'
+              }`}
+            >
+              {/* Active Cart Pill */}
               <button
                 type="button"
                 onClick={() => {
-                  switchCart(1);
                   setActiveView('pos');
+                  setIsCartDrawerOpen(true);
                 }}
-                className={`touch-btn px-2 sm:px-2.5 py-1 text-xs font-bold rounded-lg sm:rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                  activeCartId === 1
-                    ? 'bg-[#234931] text-white shadow-2xs'
-                    : 'text-[#483d31] hover:text-[#234931]'
-                }`}
-                title="Panier 1 (Alt+1 ou F3)"
-                aria-pressed={activeCartId === 1}
+                className="touch-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg sm:rounded-xl font-bold text-xs cursor-pointer hover:opacity-90 transition-opacity"
+                title={`Panier ${activeCartId} actuellement ACTIF (${cartSummary.totalItems} article${cartSummary.totalItems > 1 ? 's' : ''}) • Cliquer pour ouvrir`}
               >
-                <span>P1</span>
+                <span className="text-sm">
+                  {activeCartId === 1 ? '🍃' : '🍂'}
+                </span>
+                <span className="font-extrabold tracking-tight">
+                  Panier {activeCartId}
+                </span>
                 <span
-                  className={`px-1 rounded-full text-[10px] font-mono font-bold ${
-                    activeCartId === 1 ? 'bg-emerald-950 text-emerald-200' : 'bg-black/10 text-stone-700'
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-black ${
+                    activeCartId === 1
+                      ? 'bg-[#234931] text-emerald-100'
+                      : 'bg-[#85522b] text-amber-100'
                   }`}
                 >
-                  {cart1Summary.totalItems}
+                  {cartSummary.totalItems} art.
                 </span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  switchCart(2);
-                  setActiveView('pos');
-                }}
-                className={`touch-btn px-2 sm:px-2.5 py-1 text-xs font-bold rounded-lg sm:rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                  activeCartId === 2
-                    ? 'bg-[#85522b] text-white shadow-2xs'
-                    : 'text-[#483d31] hover:text-[#85522b]'
-                }`}
-                title="Panier 2 (Alt+2 ou F3)"
-                aria-pressed={activeCartId === 2}
-              >
-                <span>P2</span>
-                <span
-                  className={`px-1 rounded-full text-[10px] font-mono font-bold ${
-                    activeCartId === 2 ? 'bg-[#482611] text-amber-200' : 'bg-black/10 text-stone-700'
-                  }`}
-                >
-                  {cart2Summary.totalItems}
-                </span>
-              </button>
-
+              {/* Quick Switch Button with F2 / Tab dedicated shortcut */}
               <button
                 type="button"
                 onClick={() => switchCart()}
-                className="touch-btn px-1.5 py-1 text-[#605547] hover:text-[#234931] text-[11px] font-bold font-mono transition-colors cursor-pointer flex items-center gap-0.5"
-                title="Basculer de panier (Raccourci universel F3 ou Alt+P)"
-                aria-label="Basculer de panier"
+                className={`touch-btn px-2 py-1 rounded-lg sm:rounded-xl text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer shadow-2xs ${
+                  activeCartId === 1
+                    ? 'bg-white hover:bg-emerald-50 text-[#234931] border-[#c0e0c2]'
+                    : 'bg-white hover:bg-amber-50 text-[#85522b] border-[#ebd4bf]'
+                }`}
+                title={`Basculer vers Panier ${activeCartId === 1 ? '2' : '1'} (Raccourci : F2 ou Tab)`}
+                aria-label={`Basculer vers Panier ${activeCartId === 1 ? '2' : '1'}`}
               >
-                <ArrowLeftRight className="w-3 h-3" />
-                <span className="hidden sm:inline">F3</span>
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+                <span className="font-mono text-[10px] font-black uppercase px-1 py-0.5 rounded bg-black/5">
+                  F2 / Tab
+                </span>
               </button>
             </div>
 

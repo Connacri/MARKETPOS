@@ -109,19 +109,32 @@ export const PosRegisterView: React.FC = () => {
         return;
       }
 
-      // 2. F2: Initiate transaction (Open checkout modal)
+      // 2. F2: Basculer entre Panier 1 et Panier 2
       if (e.key === 'F2') {
+        e.preventDefault();
+        switchCart();
+        setShortcutFeedback({
+          key: 'F2',
+          label: `Basculé vers Panier ${activeCartId === 1 ? 2 : 1}`,
+          type: 'success',
+        });
+        setTimeout(() => setShortcutFeedback(null), 2500);
+        return;
+      }
+
+      // F9: Initier l'encaissement (Transaction)
+      if (e.key === 'F9') {
         e.preventDefault();
         if (cart.length > 0) {
           initiateCheckout();
           setShortcutFeedback({
-            key: 'F2',
+            key: 'F9',
             label: 'Transaction initiée • Encaissement',
             type: 'success',
           });
         } else {
           setShortcutFeedback({
-            key: 'F2',
+            key: 'F9',
             label: "Panier vide : ajoutez des articles avant d'encaisser",
             type: 'warning',
           });
@@ -507,21 +520,21 @@ export const PosRegisterView: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={initiateCheckout}
+                onClick={() => switchCart()}
                 className="inline-flex items-center gap-1 bg-white hover:bg-sand-100 px-2 py-0.5 rounded-lg border border-sand-200 shadow-2xs transition-colors cursor-pointer"
-                title="Initier l'encaissement"
+                title="Basculer instantanément entre Panier 1 et Panier 2 (F2 ou Tab)"
               >
-                <kbd className="font-mono font-black text-xs bg-emerald-50 text-emerald-800 px-1 rounded">F2</kbd>
-                <span className="text-ink-700">Encaisser</span>
+                <kbd className="font-mono font-black text-xs bg-amber-50 text-amber-900 px-1 rounded">F2 / Tab</kbd>
+                <span className="text-ink-700">Panier {activeCartId === 1 ? 'P1 ➜ P2' : 'P2 ➜ P1'}</span>
               </button>
               <button
                 type="button"
-                onClick={() => switchCart()}
+                onClick={initiateCheckout}
                 className="inline-flex items-center gap-1 bg-white hover:bg-sand-100 px-2 py-0.5 rounded-lg border border-sand-200 shadow-2xs transition-colors cursor-pointer"
-                title="Basculer instantanément entre Panier 1 et Panier 2 (F3 ou Alt+P)"
+                title="Initier l'encaissement (F9)"
               >
-                <kbd className="font-mono font-black text-xs bg-amber-50 text-amber-900 px-1 rounded">F3</kbd>
-                <span className="text-ink-700">Panier {activeCartId === 1 ? 'P1 ➜ P2' : 'P2 ➜ P1'}</span>
+                <kbd className="font-mono font-black text-xs bg-emerald-50 text-emerald-800 px-1 rounded">F9</kbd>
+                <span className="text-ink-700">Encaisser</span>
               </button>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 text-ink-700">
                 <kbd className="font-mono font-black text-xs bg-rose-50 text-rose-800 px-1 rounded">Échap</kbd>
@@ -770,18 +783,6 @@ export const PosRegisterView: React.FC = () => {
                   </kbd>
                 </div>
 
-                <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-sand-50 border border-sand-200/80">
-                  <div>
-                    <div className="font-bold text-xs text-ink-900">Initier l'Encaissement (Transaction)</div>
-                    <div className="text-xs text-ink-600 mt-0.5">
-                      Ouvre la fenêtre de règlement et de paiement pour la commande en cours.
-                    </div>
-                  </div>
-                  <kbd className="font-mono font-bold text-xs bg-emerald-50 text-emerald-800 px-2 py-1 rounded-lg border border-emerald-300 shadow-2xs shrink-0">
-                    F2
-                  </kbd>
-                </div>
-
                 <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-amber-50/70 border border-amber-200">
                   <div>
                     <div className="font-bold text-xs text-amber-950">Basculer entre les 2 Paniers (Caisse Double)</div>
@@ -791,10 +792,22 @@ export const PosRegisterView: React.FC = () => {
                   </div>
                   <div className="flex flex-col gap-1 items-end shrink-0">
                     <kbd className="font-mono font-bold text-xs bg-amber-100 text-amber-900 px-2 py-1 rounded-lg border border-amber-300 shadow-2xs">
-                      F3 / Alt+P
+                      F2 / Tab
                     </kbd>
-                    <span className="text-[10px] font-mono text-amber-700">Alt+1 / Alt+2</span>
+                    <span className="text-[10px] font-mono text-amber-700">F3 • Alt+1 / Alt+2</span>
                   </div>
+                </div>
+
+                <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-sand-50 border border-sand-200/80">
+                  <div>
+                    <div className="font-bold text-xs text-ink-900">Initier l'Encaissement (Transaction)</div>
+                    <div className="text-xs text-ink-600 mt-0.5">
+                      Ouvre la fenêtre de règlement et de paiement pour la commande en cours.
+                    </div>
+                  </div>
+                  <kbd className="font-mono font-bold text-xs bg-emerald-50 text-emerald-800 px-2 py-1 rounded-lg border border-emerald-300 shadow-2xs shrink-0">
+                    F9
+                  </kbd>
                 </div>
 
                 <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-sand-50 border border-sand-200/80">

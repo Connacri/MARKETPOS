@@ -603,7 +603,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isDrawer = false, onClose 
             <span>Encaisser {cart.length > 0 && `• ${formatMoney(cartSummary.totalTTC)}`}</span>
             {!isDrawer && (
               <kbd className="hidden sm:inline-block bg-forest-900 text-[#e8f1e8] text-xs px-2 py-0.5 rounded-md font-mono font-bold">
-                F2
+                F9
               </kbd>
             )}
           </button>

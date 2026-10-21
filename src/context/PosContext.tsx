@@ -658,6 +658,28 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Universal keyboard shortcut listener for dual cart switching (F3, F4, Alt+P, Alt+C, Alt+1, Alt+2)
   useEffect(() => {
     const handleUniversalKeyDown = (e: KeyboardEvent) => {
+      // 0. F2: Raccourci dédié pour basculer de panier (Panier 1 <-> Panier 2)
+      if (e.key === 'F2') {
+        e.preventDefault();
+        e.stopPropagation();
+        switchCart();
+        return;
+      }
+
+      // Tab: Basculer de panier lorsqu'on ne tape pas dans un champ texte
+      const target = e.target as HTMLElement | null;
+      const isInput =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+      if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && !isInput) {
+        e.preventDefault();
+        e.stopPropagation();
+        switchCart();
+        return;
+      }
+
       // 1. F3 or F4: Universal switch between Panier 1 and Panier 2
       if (e.key === 'F3' || e.key === 'F4') {
         e.preventDefault();

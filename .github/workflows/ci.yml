@@ -21,14 +21,14 @@ jobs:
       - name: Configuration de Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Installation des dépendances
         run: |
           if [ -f package-lock.json ]; then
-            npm ci || npm install
+            npm ci --legacy-peer-deps || npm install --legacy-peer-deps
           else
-            npm install
+            npm install --legacy-peer-deps
           fi
 
       - name: Contrôle de syntaxe & types (TypeScript)
@@ -45,14 +45,14 @@ jobs:
       - name: Configuration de Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Installation des dépendances
         run: |
           if [ -f package-lock.json ]; then
-            npm ci || npm install
+            npm ci --legacy-peer-deps || npm install --legacy-peer-deps
           else
-            npm install
+            npm install --legacy-peer-deps
           fi
 
       - name: Compilation de production Vite

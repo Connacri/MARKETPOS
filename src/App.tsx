@@ -28,7 +28,53 @@ const MainContent: React.FC = () => {
 };
 
 export const AppLayout: React.FC = () => {
-  const { isMobileMenuOpen, setIsMobileMenuOpen, globalToast, dismissToast } = usePos();
+  const {
+    isMobileMenuOpen,
+    setIsMobileMenuOpen,
+    globalToast,
+    dismissToast,
+    switchCart,
+    activeCartId,
+  } = usePos();
+
+  // Gestionnaire de raccourcis clavier global (F2, Tab, F3, Alt+P) pour basculer entre les deux paniers
+  React.useEffect(() => {
+    const handleGlobalCartSwitch = (e: KeyboardEvent) => {
+      // 1. Touche F2 : Raccourci dédié pour basculer instantanément de panier
+      if (e.key === 'F2') {
+        e.preventDefault();
+        e.stopPropagation();
+        switchCart();
+        return;
+      }
+
+      // 2. Touche Tab : Dédiée pour basculer entre les deux paniers quand on ne tape pas dans un champ texte
+      const target = e.target as HTMLElement | null;
+      const isInput =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+
+      if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && !isInput) {
+        e.preventDefault();
+        e.stopPropagation();
+        switchCart();
+        return;
+      }
+
+      // 3. Raccourcis universels de secours (F3, F4, Alt+P)
+      if (e.key === 'F3' || e.key === 'F4' || (e.altKey && (e.key === 'p' || e.key === 'P'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        switchCart();
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalCartSwitch, true);
+    return () => window.removeEventListener('keydown', handleGlobalCartSwitch, true);
+  }, [switchCart]);
 
   // Handle escape key to close mobile drawer (WCAG accessibility)
   React.useEffect(() => {
