@@ -22,6 +22,9 @@ android/*.iml
 !.env.example
 keystore_base64.txt
 upload-keystore.jks
+*.keystore
+*.jks
+release.keystore
 key.properties
 
 # IDE & Editors

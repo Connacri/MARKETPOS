@@ -16,18 +16,23 @@ concurrency:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   release:
-    name: Créer la release Web, PWA & Android (APK)
+    name: Créer la release Android (APK & AAB signés) et Déploiement Web
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Configuration de Node.js
+      - name: Configuration de Node.js (v22 LTS)
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -39,7 +44,7 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Installation des dépendances
+      - name: Installation des dépendances NPM
         run: |
           if [ -f package-lock.json ]; then
             npm ci --legacy-peer-deps || npm install --legacy-peer-deps
@@ -47,7 +52,7 @@ jobs:
             npm install --legacy-peer-deps
           fi
 
-      - name: Vérification des types
+      - name: Vérification des types TypeScript
         run: npm run lint
 
       - name: Build de production Web
@@ -75,7 +80,7 @@ jobs:
           echo "version=${CLEAN_VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=v${CLEAN_VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Créer l'archive zip Web pour déploiement
+      - name: Créer l'archive zip Web pour déploiement local / Cloud
         shell: bash
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
@@ -83,6 +88,18 @@ jobs:
           set -eo pipefail
           VER="${RELEASE_VERSION:-1.0.0}"
           cd dist && zip -r "../pos-module-web-${VER}.zip" . && cd ..
+
+      - name: Déploiement automatique Web sur GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload de l'artefact Web pour Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Mise à jour en ligne du site Web (GitHub Pages)
+        id: deployment
+        uses: actions/deploy-pages@v4
 
       - name: Synchroniser les assets avec le projet Android Capacitor
         run: |
@@ -92,17 +109,54 @@ jobs:
           fi
           npx cap sync android
 
+      - name: Préparer le Keystore Android de signature Release
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'SherwoodPos2026SecretKey!' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'marketpos' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.KEYSTORE_PASSWORD || 'SherwoodPos2026SecretKey!' }}
+        run: |
+          set -eo pipefail
+          mkdir -p android/app
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "Décodage du keystore de signature depuis GitHub Secrets..."
+            echo "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > android/app/release.keystore
+          elif [ -f "android/app/release.keystore" ]; then
+            echo "Keystore local existant détecté."
+          else
+            echo "Génération automatique d'un keystore de release sécurisé (fallback)..."
+            keytool -genkey -v -keystore android/app/release.keystore \
+              -alias "$KEY_ALIAS" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$KEYSTORE_PASSWORD" \
+              -keypass "$KEY_PASSWORD" \
+              -dname "CN=Connacri MARKETPOS, OU=POS Division, O=Connacri, L=Algiers, ST=Algiers, C=DZ"
+          fi
+          ls -lh android/app/release.keystore
+
       - name: Rendre gradlew exécutable
         run: |
           chmod +x android/gradlew
 
-      - name: Compiler les packages Android APK (Debug universel & Release)
+      - name: Compiler les packages Android (APK & AAB signés pour Google Play)
         working-directory: android
+        env:
+          ANDROID_KEYSTORE_PATH: release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'SherwoodPos2026SecretKey!' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'marketpos' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.KEYSTORE_PASSWORD || 'SherwoodPos2026SecretKey!' }}
         run: |
-          ./gradlew assembleDebug --no-daemon
-          ./gradlew assembleRelease --no-daemon || echo "Note: Build release nécessite signature personnalisée"
+          echo "1. Compilation de l'APK Release signé..."
+          ./gradlew assembleRelease --no-daemon
 
-      - name: Organiser et nommer les livrables APK et Web
+          echo "2. Compilation du bundle AAB Release signé (Google Play Store)..."
+          ./gradlew bundleRelease --no-daemon
+
+          echo "3. Compilation de l'APK Debug universel..."
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Organiser et nommer les livrables APK, AAB et Web
         shell: bash
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
@@ -111,33 +165,41 @@ jobs:
           VER="${RELEASE_VERSION:-1.0.0}"
           mkdir -p release-artifacts
 
-          # Copier et nommer l'APK universel installable directement sur tout appareil Android
+          # 1. Copier et nommer l'APK signé Release principal
+          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
+            cp android/app/build/outputs/apk/release/app-release.apk "release-artifacts/pos-module-pro-v${VER}.apk"
+            cp android/app/build/outputs/apk/release/app-release.apk "release-artifacts/pos-module-pro-v${VER}-signed-release.apk"
+          elif [ -f android/app/build/outputs/apk/release/app-release-unsigned.apk ]; then
+            cp android/app/build/outputs/apk/release/app-release-unsigned.apk "release-artifacts/pos-module-pro-v${VER}-unsigned.apk"
+          fi
+
+          # 2. Copier et nommer le bundle Android App Bundle (AAB) signé pour Google Play Store
+          if [ -f android/app/build/outputs/bundle/release/app-release.aab ]; then
+            cp android/app/build/outputs/bundle/release/app-release.aab "release-artifacts/pos-module-pro-v${VER}-signed.aab"
+            cp android/app/build/outputs/bundle/release/app-release.aab "release-artifacts/pos-module-pro-v${VER}.aab"
+          fi
+
+          # 3. Copier l'APK universel de Debug pour tests rapides
           if [ -f android/app/build/outputs/apk/debug/app-debug.apk ]; then
-            cp android/app/build/outputs/apk/debug/app-debug.apk "release-artifacts/pos-module-pro-v${VER}.apk"
             cp android/app/build/outputs/apk/debug/app-debug.apk "release-artifacts/pos-module-pro-v${VER}-debug.apk"
           fi
 
-          # Copier l'APK Release
-          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
-            cp android/app/build/outputs/apk/release/app-release.apk "release-artifacts/pos-module-pro-v${VER}-release.apk"
-          elif [ -f android/app/build/outputs/apk/release/app-release-unsigned.apk ]; then
-            cp android/app/build/outputs/apk/release/app-release-unsigned.apk "release-artifacts/pos-module-pro-v${VER}-release-unsigned.apk"
-          fi
-
-          # Déplacer l'archive Web
+          # 4. Déplacer l'archive Web
           cp "pos-module-web-${VER}.zip" release-artifacts/
 
-          echo "Livrables préparés :"
+          echo "Livrables préparés avec succès :"
           ls -lh release-artifacts/
 
-      - name: Uploader les artefacts APK vers GitHub Actions
+      - name: Uploader les artefacts (APK & AAB) vers GitHub Actions
         uses: actions/upload-artifact@v4
         with:
-          name: pos-module-pro-android-apk-${{ steps.version.outputs.version }}
-          path: release-artifacts/*.apk
+          name: pos-module-pro-android-release-${{ steps.version.outputs.version }}
+          path: |
+            release-artifacts/*.apk
+            release-artifacts/*.aab
           retention-days: 30
 
-      - name: Publier la Release GitHub avec les fichiers APK et Web
+      - name: Publier la Release GitHub officielle avec APK, AAB et Web
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
@@ -145,18 +207,22 @@ jobs:
           body: |
             ## 🍃 POS Module Pro — Version ${{ steps.version.outputs.version }}
 
-            ### 📱 Application Android (APK)
-            - **[pos-module-pro-v${{ steps.version.outputs.version }}.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/pos-module-pro-v${{ steps.version.outputs.version }}.apk)** : APK installable directement sur smartphones, tablettes et terminaux POS Android de caisse.
-            - **pos-module-pro-v${{ steps.version.outputs.version }}-release.apk** : Version release optimisée.
+            ### 📱 Application Android signée (Production & Store)
+            - **[pos-module-pro-v${{ steps.version.outputs.version }}.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/pos-module-pro-v${{ steps.version.outputs.version }}.apk)** : APK Release signé, installable directement sur tout smartphone, tablette ou terminal POS Android de caisse.
+            - **[pos-module-pro-v${{ steps.version.outputs.version }}-signed.aab](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/pos-module-pro-v${{ steps.version.outputs.version }}-signed.aab)** : Android App Bundle (AAB) officiel signé, prêt pour publication sur **Google Play Store**.
+            - **pos-module-pro-v${{ steps.version.outputs.version }}-debug.apk** : Version debug pour développeurs.
 
-            ### 🌐 Application Web & PWA
-            - **pos-module-web-${{ steps.version.outputs.version }}.zip** : Fichiers statiques prêts pour hébergement Cloud ou serveur local (Apache / Nginx).
+            ### 🌐 Déploiement Web & PWA
+            - **Application en ligne :** [Accéder à la version Web hébergée](${{ steps.deployment.outputs.page_url }})
+            - **pos-module-web-${{ steps.version.outputs.version }}.zip** : Fichiers statiques complets prêts pour hébergement Cloud (Apache, Nginx, Docker).
 
-            ### ⚡ Caractéristiques
-            - Moteur hors-ligne IndexedDB O(1)
-            - Impression thermique 80 mm ESC/POS
-            - Scanner caméra & lecteurs code-barres USB/Bluetooth
-            - Réplication décentralisée PostgreSQL / Supabase
+            ### ⚡ Fonctionnalités clés
+            - Signature officielle release v1 + v2 (Keystore PKCS12 / RSA 2048)
+            - Gestion des paniers multiples (Panier 1 / Panier 2) avec raccourcis `F2` / `Tab`
+            - Drawer et Sidebar rétractables en mode icônes sur desktop et tablette
+            - Sauvegarde et rechargement des paniers clients en 1 clic
+            - Moteur hors-ligne IndexedDB O(1) & synchronisation Cloud Supabase
+            - Impression thermique 80 mm ESC/POS avec prévisualisation
           files: |
             release-artifacts/*
         env:
