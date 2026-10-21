@@ -356,70 +356,37 @@ export const DashboardView: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* ============================================================
-          TOP HERO TOOLBAR: Title & Dynamic Time Period Filter
+          TOP HERO TOOLBAR: Responsive Masterclass Header
           ============================================================ */}
-      <div className="sherwood-panel p-5 sm:p-6 lg:p-7 flex flex-col md:flex-row md:items-center justify-between gap-5 overflow-hidden w-full min-w-0 shadow-xs">
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="sherwood-badge-forest mb-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold">
-            <TrendingUp className="w-3.5 h-3.5 text-[#234931] shrink-0" />
-            <span>Performances & Statistiques de Vente</span>
-            <span aria-hidden="true" className="text-[#877a6b]">·</span>
-            <span className="font-bold text-[#1f3d29]">{activePeriodConfig.rangeLabel}</span>
-          </div>
-          <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-[#1f3d29] font-serif-title tracking-tight flex items-center gap-2.5 truncate">
-            <span className="text-2xl sm:text-3xl">🍃</span>
-            <span>Tableau de Bord & Métriques Clés</span>
-          </h2>
-          <p className="text-xs sm:text-sm text-[#5d5244] font-medium leading-relaxed max-w-2xl">
-            Données de caisse consolidées, tendances des recettes et indicateurs d'activité en temps réel
-          </p>
-        </div>
-
-        {/* Time Period Filter: Segmented Control & Quick Actions */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 w-full md:w-auto">
-          {/* Recette Période : Grand format sur une seule ligne */}
-          <div className="flex items-center justify-between sm:justify-start gap-2.5 bg-[#fdfbf7] border border-[#d8cdba] px-4 py-2 rounded-2xl shadow-2xs shrink-0">
-            <span className="text-xs font-bold text-[#6e6354] uppercase tracking-wider whitespace-nowrap">Recette :</span>
-            <span className="text-xl sm:text-2xl font-black text-[#1f3d29] font-mono tabular-nums whitespace-nowrap">
-              {formatMoney(periodStats.revenue)}
-            </span>
+      <div className="sherwood-panel p-4 sm:p-6 lg:p-7 space-y-4 sm:space-y-5 overflow-hidden w-full min-w-0 shadow-xs border border-[#e7ddca] bg-[#fdfbf7]">
+        {/* Ligne 1 : Titre, badge et boutons d'action rapide */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex items-center flex-wrap gap-2 mb-1">
+              <span className="sherwood-badge-forest inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold">
+                <TrendingUp className="w-3.5 h-3.5 text-[#234931] shrink-0" />
+                <span>Performances en direct</span>
+              </span>
+              <span className="text-[11px] font-semibold text-[#877a6b] hidden sm:inline">·</span>
+              <span className="text-xs font-semibold text-[#6e6354] hidden sm:inline">
+                Période active : <strong className="text-[#1f3d29]">{activePeriodConfig.rangeLabel}</strong>
+              </span>
+            </div>
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-[#1f3d29] font-serif-title tracking-tight flex items-center gap-2.5 truncate">
+              <span className="text-2xl sm:text-3xl shrink-0">🍃</span>
+              <span className="truncate">Tableau de Bord & Métriques</span>
+            </h2>
+            <p className="text-xs sm:text-sm text-[#5d5244] font-medium leading-relaxed line-clamp-1 sm:line-clamp-none">
+              Indicateurs de ventes consolidés et suivi en temps réel de votre commerce
+            </p>
           </div>
 
-          <div
-            role="radiogroup"
-            aria-label="Période d'analyse des performances"
-            className="grid grid-cols-3 p-1 bg-[#e7ddca] rounded-2xl gap-1"
-          >
-            {(['today', 'week', 'month'] as TimePeriod[]).map((periodKey) => {
-              const isSelected = selectedPeriod === periodKey;
-              const config = PERIOD_CONFIG[periodKey];
-
-              return (
-                <button
-                  key={periodKey}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  onClick={() => setSelectedPeriod(periodKey)}
-                  className={`touch-btn min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                    isSelected
-                      ? 'bg-[#234931] text-[#fdfbf7] shadow-xs'
-                      : 'text-[#483d31] hover:text-[#234931] hover:bg-[#efe8d8]'
-                  }`}
-                  title={`Filtrer les données pour : ${config.rangeLabel}`}
-                >
-                  <Calendar className="w-3.5 h-3.5 shrink-0" />
-                  <span className="whitespace-nowrap">{config.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          {/* Boutons d'accès rapide Caisse POS & Articles */}
+          <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0 pt-1 sm:pt-0">
             <button
               type="button"
               onClick={() => setActiveView('pos')}
-              className="touch-btn min-h-[44px] flex-1 sm:flex-initial px-4 py-2 sherwood-btn-forest font-bold text-xs shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+              className="touch-btn min-h-[44px] flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 sherwood-btn-forest font-bold text-xs sm:text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-95"
             >
               <Store className="w-4 h-4 shrink-0" />
               <span className="whitespace-nowrap">Caisse POS</span>
@@ -428,11 +395,73 @@ export const DashboardView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveView('catalog')}
-              className="touch-btn min-h-[44px] flex-1 sm:flex-initial px-4 py-2 sherwood-btn-outline font-bold text-xs shadow-2xs flex items-center justify-center gap-2 cursor-pointer"
+              className="touch-btn min-h-[44px] flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 sherwood-btn-outline font-bold text-xs sm:text-sm shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-colors hover:border-[#234931]"
             >
               <Package className="w-4 h-4 shrink-0" />
               <span className="whitespace-nowrap">Articles</span>
             </button>
+          </div>
+        </div>
+
+        {/* Ligne 2 : Séparateur, Chips de période responsive & Carte recette */}
+        <div className="pt-3.5 sm:pt-4 border-t border-[#e7ddca] flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
+          {/* Chips de filtre de période */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#6e6354] shrink-0 flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-[#234931]" />
+              <span>Période analysée :</span>
+            </span>
+
+            {/* Grille équilibrée sur mobile (3 colonnes égales), flex naturel avec padding généreux dès tablette */}
+            <div
+              role="radiogroup"
+              aria-label="Période d'analyse des performances"
+              className="grid grid-cols-3 sm:flex sm:items-center p-1.5 bg-[#ece3d4] border border-[#d8cdba] rounded-2xl gap-1.5 sm:gap-2 shadow-inner w-full sm:w-auto"
+            >
+              {(['today', 'week', 'month'] as TimePeriod[]).map((periodKey) => {
+                const isSelected = selectedPeriod === periodKey;
+                const config = PERIOD_CONFIG[periodKey];
+
+                return (
+                  <button
+                    key={periodKey}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    onClick={() => setSelectedPeriod(periodKey)}
+                    className={`touch-btn min-h-[44px] sm:min-h-[46px] px-3 sm:px-5 lg:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 select-none text-center ${
+                      isSelected
+                        ? 'bg-[#1f3d29] text-[#fdfbf7] shadow-md ring-2 ring-[#14281b]/30 font-extrabold'
+                        : 'text-[#483d31] hover:text-[#1f3d29] hover:bg-[#ded3c0] font-semibold'
+                    }`}
+                    title={`Filtrer les données pour : ${config.rangeLabel}`}
+                  >
+                    <Calendar
+                      className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-colors ${
+                        isSelected ? 'text-[#86efac]' : 'text-[#786c5c]'
+                      }`}
+                      aria-hidden="true"
+                    />
+                    <span className="whitespace-nowrap px-1 sm:px-1.5 py-0.5 tracking-normal">
+                      {config.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Badge recette nette : Pleine largeur sur mobile, aligné à droite sur desktop */}
+          <div className="flex items-center justify-between lg:justify-end gap-3 sm:gap-4 bg-[#f7f2e7] border border-[#d8cdba] px-4 sm:px-5 py-2 sm:py-2.5 rounded-2xl shadow-2xs w-full lg:w-auto">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#234931] inline-block animate-pulse" />
+              <span className="text-xs font-bold text-[#6e6354] uppercase tracking-wider whitespace-nowrap">
+                Recette ({activePeriodConfig.label})
+              </span>
+            </div>
+            <span className="text-lg sm:text-2xl font-black text-[#1f3d29] font-mono tabular-nums whitespace-nowrap">
+              {formatMoney(periodStats.revenue)}
+            </span>
           </div>
         </div>
       </div>
