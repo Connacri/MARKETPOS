@@ -8,6 +8,8 @@ import {
   Clock,
   Calendar as CalendarIcon,
   ArrowLeftRight,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 export const SherwoodHeader: React.FC = () => {
@@ -23,6 +25,8 @@ export const SherwoodHeader: React.FC = () => {
     switchCart,
     cart1Summary,
     cart2Summary,
+    isSidebarCollapsed,
+    toggleSidebarCollapsed,
   } = usePos();
 
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -64,6 +68,29 @@ export const SherwoodHeader: React.FC = () => {
               aria-label="Ouvrir le menu"
             >
               <Menu className="w-5 h-5" />
+            </button>
+
+            {/* Desktop / Tablet Sidebar Minimize / Expand Action Button */}
+            <button
+              type="button"
+              onClick={toggleSidebarCollapsed}
+              className="hidden lg:flex touch-btn min-h-[40px] min-w-[40px] p-2 items-center justify-center text-[#483d31] hover:text-[#234931] hover:bg-[#f7f2e7] active:bg-[#ede5d6] border border-[#e5dcce] rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
+              title={
+                isSidebarCollapsed
+                  ? "Déployer le menu latéral (Afficher les libellés)"
+                  : "Réduire le menu en icônes uniquement"
+              }
+              aria-label={
+                isSidebarCollapsed
+                  ? "Déployer la barre latérale"
+                  : "Réduire la barre latérale en icônes"
+              }
+            >
+              {isSidebarCollapsed ? (
+                <PanelLeftOpen className="w-5 h-5 text-[#234931]" />
+              ) : (
+                <PanelLeftClose className="w-5 h-5 text-[#5d5244]" />
+              )}
             </button>
 
             <div className="min-w-0 flex-1">

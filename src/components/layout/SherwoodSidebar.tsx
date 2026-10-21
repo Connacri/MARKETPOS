@@ -15,30 +15,26 @@ import {
 interface SherwoodSidebarProps {
   isMobile?: boolean;
   onClose?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export const SherwoodSidebar: React.FC<SherwoodSidebarProps> = ({ isMobile = false, onClose }) => {
-  const { activeView, setActiveView } = usePos();
+export const SherwoodSidebar: React.FC<SherwoodSidebarProps> = ({
+  isMobile = false,
+  onClose,
+  isCollapsed: controlledIsCollapsed,
+  onToggleCollapse,
+}) => {
+  const {
+    activeView,
+    setActiveView,
+    isSidebarCollapsed: contextIsCollapsed,
+    toggleSidebarCollapsed: contextToggle,
+  } = usePos();
 
-  // Collapsed state persisted in localStorage for desktop & tablet
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        return localStorage.getItem('pos_sidebar_collapsed') === 'true';
-      } catch {}
-    }
-    return false;
-  });
-
-  const toggleCollapsed = () => {
-    setIsCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('pos_sidebar_collapsed', String(next));
-      } catch {}
-      return next;
-    });
-  };
+  // Controlled prop takes precedence if provided, otherwise context state
+  const isCollapsed = controlledIsCollapsed !== undefined ? controlledIsCollapsed : contextIsCollapsed;
+  const toggleCollapsed = onToggleCollapse || contextToggle;
 
   const navItems: { id: ViewType; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'pos', label: 'Caisse POS', icon: Store },
@@ -61,12 +57,12 @@ export const SherwoodSidebar: React.FC<SherwoodSidebarProps> = ({ isMobile = fal
 
   return (
     <aside
-      className={`bg-[#1f3d29] text-[#fcfbf7] flex flex-col justify-between border-r border-[#16311f] select-none shadow-xl transition-all duration-200 ${
+      className={`bg-[#1f3d29] text-[#fcfbf7] flex flex-col justify-between border-r border-[#16311f] select-none shadow-xl sherwood-sidebar ${
         isMobile
           ? 'w-full h-full overflow-y-auto p-4 pt-[max(1rem,calc(1rem+env(safe-area-inset-top,0px)))] pb-[max(1rem,calc(1rem+env(safe-area-inset-bottom,0px)))] pl-[max(1rem,calc(1rem+env(safe-area-inset-left,0px)))]'
           : collapsed
-          ? 'w-20 h-screen sticky top-0 p-2.5 items-center'
-          : 'w-64 h-screen sticky top-0 p-4'
+          ? 'sherwood-sidebar-collapsed h-screen sticky top-0 p-2.5 items-center'
+          : 'sherwood-sidebar-expanded h-screen sticky top-0 p-4'
       }`}
     >
       {/* Top Section: Header & Signboard + Navigation */}

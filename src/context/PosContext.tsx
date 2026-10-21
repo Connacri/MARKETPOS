@@ -56,6 +56,9 @@ interface PosContextType {
   // Navigation & Active View
   activeView: ViewType;
   setActiveView: (view: ViewType) => void;
+  isSidebarCollapsed: boolean;
+  setIsSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebarCollapsed: () => void;
   openNewProductModal: boolean;
   setOpenNewProductModal: (open: boolean) => void;
   isMobileMenuOpen: boolean;
@@ -182,6 +185,7 @@ const STORAGE_KEYS = {
   DUAL_CARTS: 'pos_module_dual_carts_v4',
   ACTIVE_CART_ID: 'pos_module_active_cart_id_v4',
   CUSTOMER_CARTS: 'pos_module_customer_carts_v4',
+  SIDEBAR_COLLAPSED: 'pos_sidebar_collapsed',
 };
 
 export const computeCartSummary = (items: CartItem[], discountPercent: number): CartSummary => {
@@ -222,6 +226,33 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [openNewProductModal, setOpenNewProductModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
+
+  // Collapsible sidebar state for desktop & tablet
+  const [isSidebarCollapsed, setIsSidebarCollapsedState] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSED) === 'true';
+      } catch {}
+    }
+    return false;
+  });
+
+  const setIsSidebarCollapsed = useCallback((collapsed: boolean) => {
+    setIsSidebarCollapsedState(collapsed);
+    try {
+      localStorage.setItem(STORAGE_KEYS.SIDEBAR_COLLAPSED, String(collapsed));
+    } catch {}
+  }, []);
+
+  const toggleSidebarCollapsed = useCallback(() => {
+    setIsSidebarCollapsedState((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(STORAGE_KEYS.SIDEBAR_COLLAPSED, String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
 
   // Real-time offline detection
   const [isOffline, setIsOfflineState] = useState<boolean>(() => {
@@ -1157,6 +1188,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         activeView,
         setActiveView,
+        isSidebarCollapsed,
+        setIsSidebarCollapsed,
+        toggleSidebarCollapsed,
         openNewProductModal,
         setOpenNewProductModal,
         isMobileMenuOpen,
