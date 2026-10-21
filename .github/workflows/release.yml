@@ -194,7 +194,7 @@ jobs:
           EXPECTED=$(keytool -list -v -keystore app/release.keystore -storepass "$KEYSTORE_PASSWORD" \
             -alias "$KEY_ALIAS" | awk -F': ' '/SHA256:/ {print $2; exit}' | tr -d ':' | tr 'A-F' 'a-f')
           ACTUAL=$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK" \
-            | awk -F': ' '/certificate SHA-256 digest/ {print $2; exit}' | tr -d ':' | tr 'A-F' 'a-f')
+            | awk -F': ' '/certificate SHA-256 digest/ {print $NF; exit}' | tr -d ':' | tr 'A-F' 'a-f')
           if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
             echo "::error::L'APK n'est pas signé avec le keystore attendu (attendu=$EXPECTED, obtenu=$ACTUAL)"
             exit 1
@@ -250,7 +250,7 @@ jobs:
             ## POS Module Pro v${{ needs.version.outputs.version }}
 
             ### Application Android signée
-            - **pos-module-pro-v${{ needs.version.outputs.version }}.apk** — APK release signé (v1 + v2), installable directement.
+            - **pos-module-pro-v${{ needs.version.outputs.version }}.apk** — APK release signé (schémas v2/v3), installable directement.
             - **pos-module-pro-v${{ needs.version.outputs.version }}.aab** — Android App Bundle signé, prêt pour Google Play Console.
 
             ### Web
