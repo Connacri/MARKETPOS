@@ -151,12 +151,12 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isDrawer = false, onClose 
             type="button"
             onClick={() => switchCart(1)}
             aria-pressed={activeCartId === 1}
-            className={`touch-btn min-h-[44px] flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between gap-1.5 cursor-pointer ${
+            className={`touch-btn min-h-[48px] flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between gap-1.5 cursor-pointer ${
               activeCartId === 1
                 ? 'bg-[#234931] text-[#fdfbf7] shadow-sm border border-[#3e7550] ring-2 ring-emerald-400/50'
                 : 'bg-black/20 text-[#bad3c0] hover:text-white hover:bg-black/30 border border-transparent'
             }`}
-            title="Activer Panier 1 (Raccourci universel : Alt+1 ou F3)"
+            title="Activer Panier 1"
           >
             <div className="flex items-center gap-1.5 min-w-0">
               <span className={activeCartId === 1 ? 'text-emerald-300 text-sm' : 'text-stone-400 text-xs'}>🍃</span>
@@ -180,12 +180,12 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isDrawer = false, onClose 
             type="button"
             onClick={() => switchCart(2)}
             aria-pressed={activeCartId === 2}
-            className={`touch-btn min-h-[44px] flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between gap-1.5 cursor-pointer ${
+            className={`touch-btn min-h-[48px] flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between gap-1.5 cursor-pointer ${
               activeCartId === 2
                 ? 'bg-[#85522b] text-[#fff6ec] shadow-sm border border-[#a86a3e] ring-2 ring-amber-400/50'
                 : 'bg-black/20 text-[#bad3c0] hover:text-white hover:bg-black/30 border border-transparent'
             }`}
-            title="Activer Panier 2 (Raccourci universel : Alt+2 ou F3)"
+            title="Activer Panier 2"
           >
             <div className="flex items-center gap-1.5 min-w-0">
               <span className={activeCartId === 2 ? 'text-amber-300 text-sm' : 'text-stone-400 text-xs'}>🍂</span>
@@ -209,11 +209,12 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isDrawer = false, onClose 
           <button
             type="button"
             onClick={() => switchCart()}
-            className="touch-btn min-h-[44px] px-2.5 py-1.5 bg-[#2d563a] hover:bg-[#3b6f4c] text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer shrink-0"
-            title="Basculer instantanément de panier (Raccourci universel F3 ou Alt+P)"
+            className="touch-btn min-h-[48px] min-w-[48px] px-2.5 py-1.5 bg-[#2d563a] hover:bg-[#3b6f4c] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-xs cursor-pointer shrink-0"
+            title="Basculer instantanément de panier"
+            aria-label="Basculer de panier"
           >
             <ArrowLeftRight className="w-4 h-4 text-emerald-300" />
-            <span className="font-mono text-[10px] bg-black/30 px-1 py-0.5 rounded font-black">F3</span>
+            <span className="hidden sm:inline font-mono text-[10px] bg-black/30 px-1 py-0.5 rounded font-black">F3</span>
           </button>
         </div>
       </div>

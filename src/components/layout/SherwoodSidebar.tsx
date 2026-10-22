@@ -10,6 +10,8 @@ import {
   X,
   ChevronsLeft,
   ChevronsRight,
+  Keyboard,
+  HelpCircle,
 } from 'lucide-react';
 
 interface SherwoodSidebarProps {
@@ -30,7 +32,20 @@ export const SherwoodSidebar: React.FC<SherwoodSidebarProps> = ({
     setActiveView,
     isSidebarCollapsed: contextIsCollapsed,
     toggleSidebarCollapsed: contextToggle,
+    activeCartId,
+    switchCart,
+    cart1Summary,
+    cart2Summary,
+    isOffline,
+    isShortcutsModalOpen,
+    setIsShortcutsModalOpen,
   } = usePos();
+
+  const formatMoney = (val: number) => {
+    return new Intl.NumberFormat('fr-DZ', {
+      maximumFractionDigits: 0,
+    }).format(val) + '\u00A0DA';
+  };
 
   // Controlled prop takes precedence if provided, otherwise context state
   const isCollapsed = controlledIsCollapsed !== undefined ? controlledIsCollapsed : contextIsCollapsed;
@@ -47,6 +62,13 @@ export const SherwoodSidebar: React.FC<SherwoodSidebarProps> = ({
 
   const handleNavClick = (id: ViewType) => {
     setActiveView(id);
+    if (isMobile && onClose) {
+      onClose();
+    }
+  };
+
+  const handleOpenShortcuts = () => {
+    setIsShortcutsModalOpen(true);
     if (isMobile && onClose) {
       onClose();
     }
@@ -69,21 +91,97 @@ export const SherwoodSidebar: React.FC<SherwoodSidebarProps> = ({
       <div className="w-full space-y-4">
         {/* Mobile Header with dedicated Close Button if isMobile */}
         {isMobile && (
-          <div className="flex items-center justify-between pb-3 border-b border-[#2d563a]">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🍃</span>
-              <span className="font-serif-title font-bold text-sm text-[#fff5ea] tracking-tight">Menu Sherwood</span>
+          <div className="space-y-3 pb-3 border-b border-[#2d563a]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🍃</span>
+                <div>
+                  <span className="font-serif-title font-bold text-base text-[#fff5ea] tracking-tight block">
+                    MARKETPOS
+                  </span>
+                  <span className="text-[10px] text-[#a6c4a6] font-medium block">
+                    Menu de navigation
+                  </span>
+                </div>
+              </div>
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Fermer le menu de navigation"
+                  className="touch-btn min-h-[44px] min-w-[44px] p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 text-[#fdfbf7] border border-white/20 shadow-xs flex items-center justify-center transition-all cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[#86efac]"
+                >
+                  <X className="w-5 h-5 text-white" />
+                </button>
+              )}
             </div>
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Fermer le menu de navigation"
-                className="touch-btn min-h-[44px] min-w-[44px] p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 text-[#fdfbf7] border border-white/20 shadow-xs flex items-center justify-center transition-all cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[#86efac]"
-              >
-                <X className="w-5 h-5 text-white" />
-              </button>
-            )}
+
+            {/* Quick Dual Cart Status Pill in Mobile Menu */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[10px] font-bold text-[#a6c4a6] uppercase tracking-wider">
+                <span>Panier actif en caisse</span>
+                <span className="text-[#86efac]">{activeCartId === 1 ? 'Panier 1 actif' : 'Panier 2 actif'}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    switchCart(1);
+                  }}
+                  className={`touch-btn min-h-[44px] p-2.5 rounded-2xl flex flex-col items-start justify-center transition-all cursor-pointer border text-left ${
+                    activeCartId === 1
+                      ? 'bg-[#274b33] text-white border-[#86efac] shadow-md ring-1 ring-[#86efac]'
+                      : 'bg-[#14281b] text-[#c5ddc5] border-[#2d563a] hover:bg-[#1a3524]'
+                  }`}
+                  aria-pressed={activeCartId === 1}
+                >
+                  <div className="flex items-center gap-1.5 w-full justify-between">
+                    <span className="text-xs font-black flex items-center gap-1">
+                      <span>🍃</span> P1
+                    </span>
+                    {activeCartId === 1 && (
+                      <span className="w-2 h-2 rounded-full bg-[#86efac] inline-block animate-pulse" />
+                    )}
+                  </div>
+                  <div className="text-[11px] font-mono font-bold text-[#86efac] mt-0.5 truncate w-full">
+                    {formatMoney(cart1Summary.totalTTC)}
+                  </div>
+                  <span className="text-[9px] text-[#a6c4a6]/80 font-medium">
+                    {cart1Summary.totalItems} art.
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    switchCart(2);
+                  }}
+                  className={`touch-btn min-h-[44px] p-2.5 rounded-2xl flex flex-col items-start justify-center transition-all cursor-pointer border text-left ${
+                    activeCartId === 2
+                      ? 'bg-[#85522b] text-[#fff6ec] border-amber-300 shadow-md ring-1 ring-amber-300'
+                      : 'bg-[#14281b] text-[#c5ddc5] border-[#2d563a] hover:bg-[#1a3524]'
+                  }`}
+                  aria-pressed={activeCartId === 2}
+                >
+                  <div className="flex items-center gap-1.5 w-full justify-between">
+                    <span className="text-xs font-black flex items-center gap-1">
+                      <span>🍂</span> P2
+                    </span>
+                    {activeCartId === 2 && (
+                      <span className="w-2 h-2 rounded-full bg-amber-300 inline-block animate-pulse" />
+                    )}
+                  </div>
+                  <div className="text-[11px] font-mono font-bold text-amber-200 mt-0.5 truncate w-full">
+                    {formatMoney(cart2Summary.totalTTC)}
+                  </div>
+                  <span className="text-[9px] text-[#a6c4a6]/80 font-medium">
+                    {cart2Summary.totalItems} art.
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -111,20 +209,20 @@ export const SherwoodSidebar: React.FC<SherwoodSidebarProps> = ({
 
                 {/* Wooden Board Typography */}
                 <div className="text-[11px] uppercase tracking-widest text-[#f5d7b5] font-bold drop-shadow-xs">
-                  Bienvenue chez
+                  Système de Vente
                 </div>
                 <div className="text-xl sm:text-2xl font-black text-[#fff2e2] font-serif-title tracking-tight drop-shadow-md">
-                  Sherwood
+                  MARKETPOS
                 </div>
                 <div className="text-xs text-[#eed1b0] font-semibold tracking-wide">
-                  Boutique • Caisse POS
+                  Caisse & Facturation
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* Navigation items (accessible min 44px/48px touch targets) */}
+        {/* Navigation items (accessible min 48px/52px touch targets on mobile) */}
         <nav className="space-y-2 w-full" aria-label="Menu principal">
           {navItems.map((item) => {
             const isActive = activeView === item.id;
@@ -137,7 +235,9 @@ export const SherwoodSidebar: React.FC<SherwoodSidebarProps> = ({
                 onClick={() => handleNavClick(item.id)}
                 aria-current={isActive ? 'page' : undefined}
                 title={collapsed ? item.label : undefined}
-                className={`touch-btn w-full min-h-[48px] rounded-2xl text-sm font-bold flex items-center transition-all cursor-pointer ${
+                className={`touch-btn w-full ${
+                  isMobile ? 'min-h-[52px]' : 'min-h-[48px]'
+                } rounded-2xl text-sm font-bold flex items-center transition-all cursor-pointer ${
                   collapsed
                     ? 'justify-center p-2.5'
                     : 'justify-between px-4 py-2.5'
@@ -159,11 +259,51 @@ export const SherwoodSidebar: React.FC<SherwoodSidebarProps> = ({
               </button>
             );
           })}
+
+          {/* Visual Help & Keyboard Shortcuts Entry in Main Menu */}
+          <div className="pt-2 mt-2 border-t border-[#2d563a]/60">
+            <button
+              type="button"
+              onClick={handleOpenShortcuts}
+              aria-haspopup="dialog"
+              title={collapsed ? 'Aide & Raccourcis Clavier [F2, Tab, F1, F9, ?]' : undefined}
+              className={`touch-btn w-full ${
+                isMobile ? 'min-h-[50px]' : 'min-h-[44px]'
+              } rounded-2xl text-xs sm:text-sm font-bold flex items-center transition-all cursor-pointer border border-[#2d563a] bg-[#172f20]/70 hover:bg-[#254b32] text-[#c7dac7] hover:text-white active:bg-[#16311f] ${
+                collapsed
+                  ? 'justify-center p-2.5'
+                  : 'justify-between px-3.5 py-2.5'
+              }`}
+            >
+              <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}>
+                <Keyboard className="w-5 h-5 shrink-0 text-[#86efac]" />
+                {!collapsed && (
+                  <span className="text-left leading-tight truncate">
+                    Raccourcis Clavier
+                  </span>
+                )}
+              </div>
+              {!collapsed && (
+                <kbd className="text-[10px] font-mono font-bold bg-[#0d1d13] text-[#86efac] px-2 py-0.5 rounded-lg border border-[#2d563a] shadow-xs shrink-0">
+                  F2 • ?
+                </kbd>
+              )}
+            </button>
+          </div>
         </nav>
       </div>
 
       {/* Footer / Minimize Toggle in Sidebar */}
       <div className="pt-3 w-full border-t border-[#16311f] flex flex-col items-center gap-2">
+        {isMobile && (
+          <div className="w-full flex items-center justify-between text-xs text-[#a6c4a6]/90 px-1 py-1">
+            <span className="font-semibold">Statut caisse :</span>
+            <span className="font-mono font-bold text-[#86efac]">
+              {isOffline ? 'Hors-Ligne' : 'Synchronisé Cloud'}
+            </span>
+          </div>
+        )}
+
         {!isMobile && (
           <button
             type="button"

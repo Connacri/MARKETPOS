@@ -1,6 +1,6 @@
 {
 	"appId": "com.connacri.posmodule",
-	"appName": "POS Module Pro",
+	"appName": "MARKETPOS",
 	"webDir": "dist",
 	"server": {
 		"androidScheme": "https"

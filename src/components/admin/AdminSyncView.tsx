@@ -314,7 +314,7 @@ export const AdminSyncView: React.FC = () => {
 
       {/* Navigation Sub-Tabs with min 44px touch targets and container bounds */}
       <div className="w-full min-w-0 border-b border-[#e7ddca] pb-2">
-        <div className="flex items-center gap-2 overflow-x-auto max-w-full scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto max-w-full scrollbar-none touch-pan-x -mx-1 px-1">
           <button
             type="button"
             onClick={() => setActiveTab('cloud')}

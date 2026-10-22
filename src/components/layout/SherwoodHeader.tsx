@@ -55,66 +55,209 @@ export const SherwoodHeader: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const formatMoney = (val: number) => {
+    return (
+      new Intl.NumberFormat('fr-DZ', {
+        maximumFractionDigits: 0,
+      }).format(val) + '\u00A0DA'
+    );
+  };
+
   return (
     <header className="sherwood-header sticky top-0 z-30 bg-[#fdfbf7]/95 backdrop-blur-md border-b border-[#e5dcce] shadow-2xs w-full max-w-full overflow-hidden pt-[env(safe-area-inset-top,0px)]">
-      <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-y-2 gap-x-3 min-w-0 overflow-hidden">
-        {/* Left: Branding & Navigation (Takes full width row on mobile, flex-1 on desktop) */}
-        <div className="flex items-center justify-between sm:justify-start gap-2.5 min-w-0 w-full sm:w-auto flex-1">
+      {/* ============================================================
+          MOBILE TOPBAR (< sm: 640px)
+          Compact 2-row ergonomic layout for phones & mobile handhelds
+          ============================================================ */}
+      <div className="sm:hidden px-3 pt-2 pb-2.5 space-y-2">
+        {/* Row 1: Burger Menu + Brand Title + Status & Quick Cart with Price */}
+        <div className="flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden touch-btn p-1.5 -ml-1 text-[#483d31] hover:text-[#234931] hover:bg-[#f7f2e7] rounded-xl transition-colors cursor-pointer shrink-0"
-              aria-label="Ouvrir le menu"
+              className="touch-btn min-h-[44px] min-w-[44px] p-2.5 text-[#2c241c] hover:text-[#234931] hover:bg-[#ede5d6] active:bg-[#e2d7c2] rounded-xl transition-colors cursor-pointer flex items-center justify-center shrink-0 border border-[#e5dcce]/80 bg-[#fdfbf7]"
+              aria-label="Ouvrir le menu de navigation"
             >
-              <Menu className="w-5 h-5" />
-            </button>
-
-            {/* Desktop / Tablet Sidebar Minimize / Expand Action Button */}
-            <button
-              type="button"
-              onClick={toggleSidebarCollapsed}
-              className="hidden lg:flex touch-btn min-h-[40px] min-w-[40px] p-2 items-center justify-center text-[#483d31] hover:text-[#234931] hover:bg-[#f7f2e7] active:bg-[#ede5d6] border border-[#e5dcce] rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
-              title={
-                isSidebarCollapsed
-                  ? "Déployer le menu latéral (Afficher les libellés)"
-                  : "Réduire le menu en icônes uniquement"
-              }
-              aria-label={
-                isSidebarCollapsed
-                  ? "Déployer la barre latérale"
-                  : "Réduire la barre latérale en icônes"
-              }
-            >
-              {isSidebarCollapsed ? (
-                <PanelLeftOpen className="w-5 h-5 text-[#234931]" />
-              ) : (
-                <PanelLeftClose className="w-5 h-5 text-[#5d5244]" />
-              )}
+              <Menu className="w-5 h-5 text-[#234931]" />
             </button>
 
             <div className="min-w-0 flex-1">
-              <h1 className="text-base sm:text-xl font-black text-[#223d2b] font-serif-title tracking-tight leading-tight flex items-center gap-1.5 truncate">
-                <span className="shrink-0 text-base sm:text-xl">🍃</span>
-                <span className="truncate">Caisse Sherwood</span>
+              <h1 className="text-base font-black text-[#1f3d29] font-serif-title tracking-tight leading-tight flex items-center gap-1.5 truncate">
+                <span className="shrink-0 text-base">🍃</span>
+                <span className="truncate">MARKETPOS</span>
               </h1>
-              <p className="text-[11px] text-[#605547] font-medium hidden sm:block truncate">
-                Ventes et stocks en direct
+              <p className="text-[10px] text-[#6e6354] font-semibold truncate">
+                Point de vente tactile
               </p>
             </div>
           </div>
 
-          {/* Mobile-only quick time pill on the top row */}
-          {currentTime && (
-            <div className="sm:hidden flex items-center gap-1 px-2 py-0.5 bg-[#f4efe4] border border-[#e5dcce] rounded-lg text-[11px] font-mono font-bold text-[#6e6354] shrink-0">
-              <Clock className="w-3 h-3 text-[#8d5732]" />
-              <span>{currentTime}</span>
-            </div>
-          )}
+          {/* Right Status: Un point vert quand en ligne (ou badge hors-ligne) */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsOffline(!isOffline)}
+              className={`touch-btn min-h-[40px] px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer shadow-2xs shrink-0 ${
+                isOffline
+                  ? 'bg-[#faece1] border-[#f0c8a8] text-[#a85a18]'
+                  : 'bg-[#edf5ec] border-[#cce4ca] hover:bg-[#e0f0df]'
+              }`}
+              title={
+                isOffline
+                  ? 'Mode hors-ligne actif (cliquer pour basculer)'
+                  : 'En ligne et synchronisé (cliquer pour simuler hors-ligne)'
+              }
+              aria-label={isOffline ? 'Hors ligne' : 'En ligne'}
+            >
+              {isOffline ? (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-[#a85a18] shrink-0" />
+                  <span className="text-[11px] font-bold">Hors ligne</span>
+                  {pendingSyncCount > 0 && (
+                    <span className="px-1.5 py-0.2 bg-[#a85a18] text-white rounded-full text-[10px] font-mono">
+                      {pendingSyncCount}
+                    </span>
+                  )}
+                </>
+              ) : (
+                /* Point vert quand en ligne */
+                <span className="relative flex h-3 w-3 items-center justify-center" title="En ligne">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-xs border border-emerald-600" />
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* Right: Actions, Sync & Cart (Drops to Row 2 on mobile via flex-wrap, or sits right on desktop) */}
-        <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5 w-full sm:w-auto min-w-0 overflow-hidden shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-[#e7ddca]/60">
+        {/* Row 2: Touch-optimized Segmented Dual Cart Switcher Tab Bar with Prices */}
+        <div className="flex items-center gap-1.5 p-1 bg-[#ede5d6] border border-[#d8cdba] rounded-2xl shadow-inner">
+          <button
+            type="button"
+            onClick={() => switchCart(1)}
+            aria-pressed={activeCartId === 1}
+            className={`touch-btn min-h-[42px] flex-1 py-1 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between gap-1.5 cursor-pointer ${
+              activeCartId === 1
+                ? 'bg-[#1f3d29] text-[#fdfbf7] shadow-sm font-black'
+                : 'text-[#5d5244] hover:text-[#1f3d29] hover:bg-white/40'
+            }`}
+          >
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-xs">🍃</span>
+              <span className="truncate">P1</span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="font-mono text-[11px] font-black">
+                {formatMoney(cart1Summary.totalTTC)}
+              </span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-black ${
+                  activeCartId === 1
+                    ? 'bg-[#86efac]/20 text-[#86efac]'
+                    : 'bg-black/10 text-[#5d5244]'
+                }`}
+              >
+                {cart1Summary.totalItems}
+              </span>
+            </div>
+          </button>
+
+          {/* Quick Swap Icon Button */}
+          <button
+            type="button"
+            onClick={() => switchCart()}
+            className="touch-btn min-h-[42px] min-w-[42px] p-2 bg-[#fdfbf7] hover:bg-[#f7f2e7] active:bg-[#e5dcce] text-[#85522b] border border-[#d8cdba] rounded-xl shadow-2xs flex items-center justify-center transition-all cursor-pointer shrink-0"
+            title="Basculer instantanément de panier"
+            aria-label="Basculer de panier"
+          >
+            <ArrowLeftRight className="w-4 h-4 text-[#85522b]" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => switchCart(2)}
+            aria-pressed={activeCartId === 2}
+            className={`touch-btn min-h-[42px] flex-1 py-1 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between gap-1.5 cursor-pointer ${
+              activeCartId === 2
+                ? 'bg-[#85522b] text-[#fff6ec] shadow-sm font-black'
+                : 'text-[#5d5244] hover:text-[#85522b] hover:bg-white/40'
+            }`}
+          >
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-xs">🍂</span>
+              <span className="truncate">P2</span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="font-mono text-[11px] font-black">
+                {formatMoney(cart2Summary.totalTTC)}
+              </span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-black ${
+                  activeCartId === 2
+                    ? 'bg-white/20 text-white'
+                    : 'bg-black/10 text-[#5d5244]'
+                }`}
+              >
+                {cart2Summary.totalItems}
+              </span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* ============================================================
+          DESKTOP & TABLET TOPBAR (>= sm: 640px)
+          Spacious single-line layout with keyboard shortcuts & full widgets
+          ============================================================ */}
+      <div className="hidden sm:flex w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 items-center justify-between gap-3 min-w-0">
+        {/* Left: Branding & Sidebar Toggle */}
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="lg:hidden touch-btn p-2 text-[#483d31] hover:text-[#234931] hover:bg-[#f7f2e7] rounded-xl transition-colors cursor-pointer shrink-0"
+            aria-label="Ouvrir le menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          {/* Desktop Sidebar Toggle */}
+          <button
+            type="button"
+            onClick={toggleSidebarCollapsed}
+            className="hidden lg:flex touch-btn min-h-[40px] min-w-[40px] p-2 items-center justify-center text-[#483d31] hover:text-[#234931] hover:bg-[#f7f2e7] active:bg-[#ede5d6] border border-[#e5dcce] rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
+            title={
+              isSidebarCollapsed
+                ? "Déployer le menu latéral (Afficher les libellés)"
+                : "Réduire le menu en icônes uniquement"
+            }
+            aria-label={
+              isSidebarCollapsed
+                ? "Déployer la barre latérale"
+                : "Réduire la barre latérale en icônes"
+            }
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen className="w-5 h-5 text-[#234931]" />
+            ) : (
+              <PanelLeftClose className="w-5 h-5 text-[#5d5244]" />
+            )}
+          </button>
+
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-black text-[#223d2b] font-serif-title tracking-tight leading-tight flex items-center gap-1.5 truncate">
+              <span className="shrink-0 text-xl">🍃</span>
+              <span className="truncate">MARKETPOS</span>
+            </h1>
+            <p className="text-[11px] text-[#605547] font-medium truncate">
+              Ventes et stocks en direct
+            </p>
+          </div>
+        </div>
+
+        {/* Right: Date, Clock, Offline/Online Point Vert, Dual Cart tabs, Cart Button */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {/* Date Pill: Desktop only */}
           {currentDate && (
             <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 bg-[#fdfbf7] border border-[#e5dcce] rounded-full text-xs font-semibold text-[#483d31] shadow-2xs whitespace-nowrap shrink-0">
@@ -123,118 +266,100 @@ export const SherwoodHeader: React.FC = () => {
             </div>
           )}
 
-          {/* Live Clock Pill: Tablet & Desktop */}
+          {/* Live Clock Pill */}
           {currentTime && (
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-[#fdfbf7] border border-[#e5dcce] rounded-full text-xs font-mono font-bold text-[#483d31] shadow-2xs whitespace-nowrap shrink-0">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#fdfbf7] border border-[#e5dcce] rounded-full text-xs font-mono font-bold text-[#483d31] shadow-2xs whitespace-nowrap shrink-0">
               <Clock className="w-3.5 h-3.5 text-[#8d5732]" />
               <span>{currentTime}</span>
             </div>
           )}
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            {/* Offline / Online Sync Pill */}
-            <button
-              type="button"
-              onClick={() => setIsOffline(!isOffline)}
-              className={`touch-btn flex-1 sm:flex-initial px-2.5 sm:px-3 py-1.5 rounded-xl sm:rounded-full text-xs font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer shadow-2xs shrink-0 ${
-                isOffline
-                  ? 'bg-[#faece1] border-[#f0c8a8] text-[#a85a18]'
-                  : 'bg-[#edf5ec] border-[#cce4ca] text-[#245229]'
-              }`}
-              title={isOffline ? 'Mode hors-ligne actif (cliquer pour basculer)' : 'En ligne et synchronisé'}
-              aria-label={isOffline ? 'Hors ligne' : 'En ligne'}
-            >
-              {isOffline ? (
-                <>
-                  <WifiOff className="w-3.5 h-3.5 text-[#a85a18] shrink-0" />
-                  <span className="text-xs font-semibold">Hors ligne</span>
-                  {pendingSyncCount > 0 && (
-                    <span className="px-1.5 py-0.2 bg-[#a85a18] text-white rounded-full text-[10px] font-mono">
-                      {pendingSyncCount}
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-                  <Wifi className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                  <span className="text-xs font-semibold">En ligne</span>
-                </>
-              )}
-            </button>
+          {/* Status Chip: Un point vert quand en ligne, ou pastille hors ligne */}
+          <button
+            type="button"
+            onClick={() => setIsOffline(!isOffline)}
+            className={`touch-btn min-h-[38px] px-2.5 py-1.5 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer shadow-2xs shrink-0 ${
+              isOffline
+                ? 'bg-[#faece1] border-[#f0c8a8] text-[#a85a18]'
+                : 'bg-[#edf5ec] border-[#cce4ca] hover:bg-[#e0f0df]'
+            }`}
+            title={
+              isOffline
+                ? 'Mode hors-ligne actif (cliquer pour basculer)'
+                : 'En ligne et synchronisé (cliquer pour simuler hors-ligne)'
+            }
+            aria-label={isOffline ? 'Hors ligne' : 'En ligne'}
+          >
+            {isOffline ? (
+              <>
+                <WifiOff className="w-3.5 h-3.5 text-[#a85a18] shrink-0" />
+                <span className="text-xs font-semibold">Hors ligne</span>
+                {pendingSyncCount > 0 && (
+                  <span className="px-1.5 py-0.2 bg-[#a85a18] text-white rounded-full text-[10px] font-mono">
+                    {pendingSyncCount}
+                  </span>
+                )}
+              </>
+            ) : (
+              /* Point vert quand en ligne */
+              <span className="relative flex h-3 w-3 items-center justify-center" title="En ligne">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-xs border border-emerald-600" />
+              </span>
+            )}
+          </button>
 
-            {/* Visual Indicator of Active Cart (Panier 1 or Panier 2) with item count */}
-            <div
-              className={`flex items-center gap-1.5 p-1 rounded-xl sm:rounded-2xl border transition-all shadow-2xs shrink-0 ${
-                activeCartId === 1
-                  ? 'bg-[#edf5ec] border-[#b4dbb6] text-[#1b3d24]'
-                  : 'bg-[#faf0e6] border-[#e8c8a8] text-[#5c3014]'
-              }`}
-            >
-              {/* Active Cart Pill */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveView('pos');
-                  setIsCartDrawerOpen(true);
-                }}
-                className="touch-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg sm:rounded-xl font-bold text-xs cursor-pointer hover:opacity-90 transition-opacity"
-                title={`Panier ${activeCartId} actuellement ACTIF (${cartSummary.totalItems} article${cartSummary.totalItems > 1 ? 's' : ''}) • Cliquer pour ouvrir`}
-              >
-                <span className="text-sm">
-                  {activeCartId === 1 ? '🍃' : '🍂'}
-                </span>
-                <span className="font-extrabold tracking-tight">
-                  Panier {activeCartId}
-                </span>
-                <span
-                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-black ${
-                    activeCartId === 1
-                      ? 'bg-[#234931] text-emerald-100'
-                      : 'bg-[#85522b] text-amber-100'
-                  }`}
-                >
-                  {cartSummary.totalItems} art.
-                </span>
-              </button>
-
-              {/* Quick Switch Button with F2 / Tab dedicated shortcut */}
-              <button
-                type="button"
-                onClick={() => switchCart()}
-                className={`touch-btn px-2 py-1 rounded-lg sm:rounded-xl text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer shadow-2xs ${
-                  activeCartId === 1
-                    ? 'bg-white hover:bg-emerald-50 text-[#234931] border-[#c0e0c2]'
-                    : 'bg-white hover:bg-amber-50 text-[#85522b] border-[#ebd4bf]'
-                }`}
-                title={`Basculer vers Panier ${activeCartId === 1 ? '2' : '1'} (Raccourci : F2 ou Tab)`}
-                aria-label={`Basculer vers Panier ${activeCartId === 1 ? '2' : '1'}`}
-              >
-                <ArrowLeftRight className="w-3.5 h-3.5" />
-                <span className="font-mono text-[10px] font-black uppercase px-1 py-0.5 rounded bg-black/5">
-                  F2 / Tab
-                </span>
-              </button>
-            </div>
-
-            {/* Header Quick Cart Button */}
+          {/* Dual Cart Indicator & Switcher with totals and F2/Tab badges */}
+          <div
+            className={`flex items-center gap-1.5 p-1 rounded-2xl border transition-all shadow-2xs shrink-0 ${
+              activeCartId === 1
+                ? 'bg-[#edf5ec] border-[#b4dbb6] text-[#1b3d24]'
+                : 'bg-[#faf0e6] border-[#e8c8a8] text-[#5c3014]'
+            }`}
+          >
             <button
               type="button"
               onClick={() => {
                 setActiveView('pos');
                 setIsCartDrawerOpen(true);
               }}
-              className="touch-btn flex-1 sm:flex-initial px-3 sm:px-3.5 py-1.5 bg-[#85522b] hover:bg-[#6e3e1c] text-[#fff6ec] rounded-xl sm:rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
-              title="Ouvrir le panier"
-              aria-label={`Panier, ${cartSummary.totalItems} articles`}
+              className="touch-btn flex items-center gap-2 px-2.5 py-1 rounded-xl font-bold text-xs cursor-pointer hover:opacity-90 transition-opacity"
+              title={`Panier ${activeCartId} actif • Total : ${formatMoney(cartSummary.totalTTC)} (${cartSummary.totalItems} art.)`}
             >
-              <ShoppingCart className="w-4 h-4 text-[#fcdbb6] shrink-0" />
-              <span className="inline">Panier</span>
-              <span className="px-1.5 py-0.2 bg-[#5d3112] text-[#fff2e2] rounded-full text-[10px] sm:text-xs font-mono font-bold">
-                {cartSummary.totalItems}
+              <span className="text-sm">{activeCartId === 1 ? '🍃' : '🍂'}</span>
+              <span className="font-extrabold tracking-tight">Panier {activeCartId}</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${
+                  activeCartId === 1
+                    ? 'bg-[#234931] text-emerald-100'
+                    : 'bg-[#85522b] text-amber-100'
+                }`}
+              >
+                {formatMoney(cartSummary.totalTTC)}
+              </span>
+              <span className="text-[10px] opacity-75 font-mono">
+                ({cartSummary.totalItems} art.)
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => switchCart()}
+              className={`touch-btn px-2 py-1 rounded-xl text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer shadow-2xs ${
+                activeCartId === 1
+                  ? 'bg-white hover:bg-emerald-50 text-[#234931] border-[#c0e0c2]'
+                  : 'bg-white hover:bg-amber-50 text-[#85522b] border-[#ebd4bf]'
+              }`}
+              title="Basculer vers l'autre panier (F2 ou Tab)"
+              aria-label="Basculer de panier"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5" />
+              <span className="font-mono text-[10px] font-black uppercase px-1 py-0.5 rounded bg-black/5">
+                F2 / Tab
               </span>
             </button>
           </div>
+
         </div>
       </div>
     </header>

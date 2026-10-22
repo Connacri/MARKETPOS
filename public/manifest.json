@@ -1,0 +1,17 @@
+{
+  "name": "MARKETPOS",
+  "short_name": "MARKETPOS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1f3d29",
+  "theme_color": "#1f3d29",
+  "orientation": "portrait-primary",
+  "description": "MARKETPOS - Système de Point de Vente (POS) et Facturation",
+  "icons": [
+    {
+      "src": "/assets/aistudio/AI-f_rslag_c37caa94.jfif",
+      "sizes": "192x192 512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}

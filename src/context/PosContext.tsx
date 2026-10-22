@@ -43,12 +43,12 @@ export const DEFAULT_PRINTER_SETTINGS: ThermalPrinterSettings = {
   openCashDrawer: true,
   printLogo: true,
   logoDataUrl: '',
-  storeName: 'SHERWOOD ISLAND POS',
-  storeSubtitle: 'Boutique & Caisse Artisanale',
+  storeName: 'MARKETPOS',
+  storeSubtitle: 'Caisse & Point de Vente',
   storeAddress: '14 Boulevard Zighout Youcef, 16000 Alger',
   storePhone: '+213 (0) 21 73 45 67',
   storeTaxId: 'NIF: 099900112233001 • RC: 16/00-0987654',
-  receiptFooterMessage: 'Merci de votre visite à Sherwood Island ! Articles échangeables sous 15 jours sur présentation du ticket.',
+  receiptFooterMessage: 'Merci de votre visite chez MARKETPOS ! Articles échangeables sous 15 jours sur présentation du ticket.',
   printCopies: 1,
 };
 
@@ -74,6 +74,8 @@ interface PosContextType {
   amountTenderedInput: string;
   setAmountTenderedInput: (val: string) => void;
   initiateCheckout: () => void;
+  isShortcutsModalOpen: boolean;
+  setIsShortcutsModalOpen: (open: boolean) => void;
 
   // Offline & Network status
   isOffline: boolean;
@@ -226,6 +228,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [openNewProductModal, setOpenNewProductModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
 
   // Collapsible sidebar state for desktop & tablet
   const [isSidebarCollapsed, setIsSidebarCollapsedState] = useState<boolean>(() => {
@@ -594,21 +597,25 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Switch between Panier 1 and Panier 2
   const switchCart = useCallback(
     (targetId?: CartId) => {
-      setActiveCartId((curr) => {
-        const nextId: CartId = targetId !== undefined ? targetId : curr === 1 ? 2 : 1;
+      const nextId: CartId = targetId !== undefined ? targetId : activeCartId === 1 ? 2 : 1;
+      setActiveCartId(nextId);
+      try {
         posSounds.playCartSwitch();
-        const targetCart = carts[nextId];
+      } catch (err) {
+        // Ignore audio playback errors
+      }
+      const targetCart = carts[nextId];
+      if (targetCart) {
         const count = targetCart.items.reduce((s, it) => s + it.quantity, 0);
         const cust = customers.find((c) => c.id === targetCart.customerId);
         const custLabel = cust ? cust.name : 'Client Comptoir';
         showToast(
-          `🍃 Basculé sur Panier ${nextId} (${count} article${count > 1 ? 's' : ''} • ${custLabel}) [F3 / Alt+P]`,
+          `🍃 Basculé sur Panier ${nextId} (${count} article${count > 1 ? 's' : ''} • ${custLabel})`,
           'info'
         );
-        return nextId;
-      });
+      }
     },
-    [carts, customers, showToast]
+    [activeCartId, carts, customers, showToast]
   );
 
   // Load a customer's specific cart items into active cart or target cart
@@ -1248,6 +1255,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         amountTenderedInput,
         setAmountTenderedInput,
         initiateCheckout,
+        isShortcutsModalOpen,
+        setIsShortcutsModalOpen,
         completeSale,
         dailyStats,
         todayStats,

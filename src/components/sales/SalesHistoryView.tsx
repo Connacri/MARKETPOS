@@ -65,7 +65,7 @@ export const SalesHistoryView: React.FC = () => {
             <span>Journal des Ventes & Factures</span>
           </h2>
           <p className="text-xs sm:text-sm text-[#605547] mt-1 font-medium">
-            Historique complet des transactions, tickets de caisse et factures émises sur Sherwood POS
+            Historique complet des transactions, tickets de caisse et factures émises sur MARKETPOS
           </p>
         </div>
 
@@ -88,12 +88,12 @@ export const SalesHistoryView: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Rechercher par N° ticket (INV-...), ou nom du client..."
-            className="w-full pl-10 pr-4 py-2.5 sherwood-input text-xs sm:text-sm font-medium"
+            className="w-full pl-10 pr-4 py-2.5 sherwood-input text-base sm:text-sm font-medium"
           />
         </div>
 
         {/* Payment filter pills with min 44px touch targets */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 text-xs font-bold">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 text-xs font-bold scrollbar-none touch-pan-x -mx-1 px-1">
           <button
             type="button"
             onClick={() => setPaymentFilter('ALL')}

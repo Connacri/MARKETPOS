@@ -10,6 +10,7 @@ import { SalesHistoryView } from './components/sales/SalesHistoryView';
 import { CustomersView } from './components/customers/CustomersView';
 import { AdminSyncView } from './components/admin/AdminSyncView';
 import { CartDrawer } from './components/pos/CartDrawer';
+import { KeyboardShortcutsModal } from './components/common/KeyboardShortcutsModal';
 import { X, CheckCircle2, AlertTriangle, XCircle, Info } from 'lucide-react';
 
 const MainContent: React.FC = () => {
@@ -31,15 +32,24 @@ export const AppLayout: React.FC = () => {
   const {
     isMobileMenuOpen,
     setIsMobileMenuOpen,
+    isShortcutsModalOpen,
+    setIsShortcutsModalOpen,
     globalToast,
     dismissToast,
     switchCart,
     activeCartId,
   } = usePos();
 
-  // Gestionnaire de raccourcis clavier global (F2, Tab, F3, Alt+P) pour basculer entre les deux paniers
+  // Gestionnaire de raccourcis clavier global (F2, Tab, F3, Alt+P, ?)
   React.useEffect(() => {
-    const handleGlobalCartSwitch = (e: KeyboardEvent) => {
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInput =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+
       // 1. Touche F2 : Raccourci dédié pour basculer instantanément de panier
       if (e.key === 'F2') {
         e.preventDefault();
@@ -49,13 +59,6 @@ export const AppLayout: React.FC = () => {
       }
 
       // 2. Touche Tab : Dédiée pour basculer entre les deux paniers quand on ne tape pas dans un champ texte
-      const target = e.target as HTMLElement | null;
-      const isInput =
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable);
-
       if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && !isInput) {
         e.preventDefault();
         e.stopPropagation();
@@ -70,22 +73,37 @@ export const AppLayout: React.FC = () => {
         switchCart();
         return;
       }
+
+      // 4. Touche '?' ou 'F12' : Ouvrir / Fermer le guide des raccourcis clavier
+      if ((e.key === '?' || e.key === 'F12' || (e.key === '/' && e.shiftKey)) && !isInput) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsShortcutsModalOpen((prev) => !prev);
+        return;
+      }
     };
 
-    window.addEventListener('keydown', handleGlobalCartSwitch, true);
-    return () => window.removeEventListener('keydown', handleGlobalCartSwitch, true);
-  }, [switchCart]);
+    window.addEventListener('keydown', handleGlobalShortcuts, true);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts, true);
+  }, [switchCart, setIsShortcutsModalOpen]);
 
-  // Handle escape key to close mobile drawer (WCAG accessibility)
+  // Handle escape key to close mobile drawer or shortcuts modal (WCAG accessibility)
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isMobileMenuOpen) {
-        setIsMobileMenuOpen(false);
+      if (e.key === 'Escape') {
+        if (isShortcutsModalOpen) {
+          setIsShortcutsModalOpen(false);
+          return;
+        }
+        if (isMobileMenuOpen) {
+          setIsMobileMenuOpen(false);
+          return;
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isMobileMenuOpen, setIsMobileMenuOpen]);
+  }, [isMobileMenuOpen, setIsMobileMenuOpen, isShortcutsModalOpen, setIsShortcutsModalOpen]);
 
   return (
     <div className="min-h-screen bg-[#f4efe4] text-[#2c241c] flex flex-row antialiased">
@@ -126,6 +144,12 @@ export const AppLayout: React.FC = () => {
 
       {/* Tiroir panier mobile : disponible depuis toutes les vues */}
       <CartDrawer />
+
+      {/* Modal d'aide visuelle et des raccourcis clavier globaux */}
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
+      />
 
       {/* Conteneur principal des toasts et messages de feedback avec aria-live='polite' */}
       <div

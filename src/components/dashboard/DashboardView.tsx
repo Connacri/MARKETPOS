@@ -478,7 +478,7 @@ export const DashboardView: React.FC = () => {
                     role="radio"
                     aria-checked={isSelected}
                     onClick={() => setSelectedPeriod(periodKey)}
-                    className={`touch-btn shrink-0 inline-flex items-center gap-1.5 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-xs font-bold transition-all duration-150 cursor-pointer select-none whitespace-nowrap shadow-2xs ${
+                    className={`touch-btn shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2 rounded-full text-xs font-bold transition-all duration-150 cursor-pointer select-none whitespace-nowrap shadow-2xs min-h-[44px] ${
                       isSelected
                         ? 'bg-[#1f3d29] text-[#fdfbf7] shadow-xs ring-1 ring-[#16311f]/40 font-black'
                         : 'bg-[#fdfbf7] border border-[#d8cdba] text-[#554738] hover:text-[#1f3d29] hover:bg-[#ece2d0] font-semibold'
@@ -500,15 +500,15 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
 
-          {/* Badge recette nette : Pleine largeur sur mobile, aligné à droite sur desktop */}
-          <div className="flex items-center justify-between lg:justify-end gap-3 sm:gap-4 bg-[#f7f2e7] border border-[#d8cdba] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-2xl shadow-2xs w-full lg:w-auto shrink-0">
+          {/* Badge recette nette : En deux lignes distinctes sur mobile, aligné à droite sur desktop */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between lg:justify-end gap-1.5 sm:gap-4 bg-[#f7f2e7] border border-[#d8cdba] px-4 py-2.5 sm:py-2 rounded-2xl shadow-2xs w-full lg:w-auto shrink-0">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#234931] inline-block animate-pulse" />
-              <span className="text-xs font-bold text-[#6e6354] uppercase tracking-wider whitespace-nowrap">
+              <span className="w-2 h-2 rounded-full bg-[#234931] inline-block animate-pulse shrink-0" />
+              <span className="text-xs font-bold text-[#6e6354] uppercase tracking-wider">
                 Recette ({activePeriodConfig.label})
               </span>
             </div>
-            <span className="text-base sm:text-xl font-black text-[#1f3d29] font-mono tabular-nums whitespace-nowrap">
+            <span className="text-lg sm:text-xl font-black text-[#1f3d29] font-mono tabular-nums">
               {formatMoney(periodStats.revenue)}
             </span>
           </div>

@@ -6,6 +6,7 @@ import { CartPanel } from './CartPanel';
 import {
   Search,
   Barcode,
+  Camera,
   Plus,
   Package,
   AlertCircle,
@@ -17,6 +18,7 @@ import {
   Keyboard,
   HelpCircle,
 } from 'lucide-react';
+import { PosCameraScannerModal } from './PosCameraScannerModal';
 
 export const PosRegisterView: React.FC = () => {
   const {
@@ -35,6 +37,7 @@ export const PosRegisterView: React.FC = () => {
     setIsCartDrawerOpen,
     activeCartId,
     switchCart,
+    setIsShortcutsModalOpen,
   } = usePos();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,13 +53,13 @@ export const PosRegisterView: React.FC = () => {
     label: string;
     type?: 'info' | 'success' | 'warning';
   } | null>(null);
-  const [showShortcutGuideModal, setShowShortcutGuideModal] = useState(false);
   const [lastScannedId, setLastScannedId] = useState<number | null>(null);
   const [stockWarningToast, setStockWarningToast] = useState<{
     productName: string;
     stock: number;
     threshold: number;
   } | null>(null);
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
 
   // Responsive state to prevent double mounting of CartPanel on mobile
   const [isDesktop, setIsDesktop] = useState(() =>
@@ -155,11 +158,6 @@ export const PosRegisterView: React.FC = () => {
           setIsCheckoutOpen(false);
           return;
         }
-        if (showShortcutGuideModal) {
-          e.preventDefault();
-          setShowShortcutGuideModal(false);
-          return;
-        }
         if (isCartDrawerOpen) {
           e.preventDefault();
           setIsCartDrawerOpen(false);
@@ -207,7 +205,6 @@ export const PosRegisterView: React.FC = () => {
     cart.length,
     isCheckoutOpen,
     isPrintPreviewOpen,
-    showShortcutGuideModal,
     isCartDrawerOpen,
     initiateCheckout,
     setIsCheckoutOpen,
@@ -277,7 +274,7 @@ export const PosRegisterView: React.FC = () => {
   }, [products, selectedCatId, searchQuery]);
 
   return (
-    <div className="flex flex-col lg:flex-row items-stretch gap-6 h-[calc(100vh-140px)] min-h-[620px] relative">
+    <div className="flex flex-col lg:flex-row items-stretch gap-4 sm:gap-6 min-h-0 lg:h-[calc(100vh-140px)] lg:min-h-[620px] relative">
       {/* FLOATING OVERLAY NOTIFICATIONS (Scan & Stock Warnings) - Does NOT push or jump product grid */}
       <div
         id="pos-toast-notifications"
@@ -285,7 +282,7 @@ export const PosRegisterView: React.FC = () => {
         aria-label="Notifications et alertes de caisse"
         aria-live="polite"
         aria-atomic="false"
-        className="fixed top-20 right-6 z-50 space-y-2 max-w-sm pointer-events-none"
+        className="fixed top-20 right-4 sm:right-6 z-50 space-y-2 max-w-sm pointer-events-none"
       >
         {scanFeedback && (
           <div
@@ -358,38 +355,45 @@ export const PosRegisterView: React.FC = () => {
         )}
       </div>
 
-      {/* Mobile/Tablet View Switcher (lg:hidden): lets users switch between Product Grid and Cart Items */}
-      <div className="lg:hidden flex items-center p-1 bg-[#e7ddca] rounded-2xl gap-1 shrink-0 w-full mb-1">
+      {/* Mobile/Tablet Ergonomic View Switcher (lg:hidden): lets users switch between Products Grid and Cart */}
+      <div className="lg:hidden flex items-center p-1.5 bg-[#ede5d6] border border-[#d8cdba] rounded-2xl gap-1.5 shrink-0 w-full mb-1 shadow-inner">
         <button
           type="button"
           onClick={() => setMobilePosTab('products')}
-          className={`touch-btn min-h-[44px] flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+          className={`touch-btn min-h-[48px] flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             mobilePosTab === 'products'
-              ? 'bg-[#1f3d29] text-white shadow-xs'
-              : 'text-[#483d31] hover:text-[#1f3d29]'
+              ? 'bg-[#1f3d29] text-[#fdfbf7] shadow-sm font-black'
+              : 'text-[#5d5244] hover:text-[#1f3d29] hover:bg-white/40'
           }`}
         >
           <Package className="w-4 h-4 shrink-0" />
-          <span>Rayons & Articles ({filteredProducts.length})</span>
+          <span>Rayons & Articles</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[11px] font-mono font-black ${
+              mobilePosTab === 'products' ? 'bg-[#86efac]/20 text-[#86efac]' : 'bg-black/10 text-[#5d5244]'
+            }`}
+          >
+            {filteredProducts.length}
+          </span>
         </button>
 
         <button
           type="button"
           onClick={() => setMobilePosTab('cart')}
-          className={`touch-btn min-h-[44px] flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+          className={`touch-btn min-h-[48px] flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             mobilePosTab === 'cart'
-              ? 'bg-[#85522b] text-white shadow-xs'
-              : 'text-[#483d31] hover:text-[#85522b]'
+              ? 'bg-[#85522b] text-[#fff6ec] shadow-sm font-black'
+              : 'text-[#5d5244] hover:text-[#85522b] hover:bg-white/40'
           }`}
         >
-          <ShoppingCart className="w-4 h-4 shrink-0" />
-          <span>Panier de vente</span>
+          <ShoppingCart className="w-4 h-4 shrink-0 text-[#fcdbb6]" />
+          <span>Panier</span>
           <span
             className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${
               mobilePosTab === 'cart' ? 'bg-white/20 text-white' : 'bg-[#faeee2] text-[#85522b]'
             }`}
           >
-            {cartSummary.totalItems}
+            {cartSummary.totalItems} {cartSummary.totalItems > 0 ? `• ${formatMoney(cartSummary.totalTTC)}` : ''}
           </span>
         </button>
       </div>
@@ -402,7 +406,7 @@ export const PosRegisterView: React.FC = () => {
       )}
 
       {/* Left Column: Product Selection & Barcode scanner */}
-      <div className={`flex-1 flex-col sherwood-card p-4 sm:p-5 overflow-hidden ${!isDesktop && mobilePosTab === 'cart' ? 'hidden' : 'flex'}`}>
+      <div className={`flex-1 flex-col sherwood-card p-3.5 sm:p-5 overflow-hidden ${!isDesktop && mobilePosTab === 'cart' ? 'hidden' : 'flex'}`}>
         {/* Top Header & Barcode scanner tool */}
         <div className="space-y-3 pb-3 border-b border-sand-100">
           {/* Barcode scanner form with latency indicator */}
@@ -415,7 +419,7 @@ export const PosRegisterView: React.FC = () => {
                 value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)}
                 placeholder="Scanner un code-barres EAN (ou tapez SKU / EAN et Entrée)..."
-                className="w-full pl-11 pr-24 py-2.5 bg-sand-100/60 border border-sand-300/80 rounded-2xl text-xs sm:text-sm font-mono placeholder:font-sans placeholder:text-ink-600 focus:outline-hidden focus:ring-2 focus:ring-forest-700/20 focus:border-forest-700"
+                className="w-full pl-11 pr-24 py-2.5 bg-sand-100/60 border border-sand-300/80 rounded-2xl text-base sm:text-sm font-mono placeholder:font-sans placeholder:text-ink-600 focus:outline-hidden focus:ring-2 focus:ring-forest-700/20 focus:border-forest-700"
               />
               <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 <span className="hidden sm:inline-flex items-center gap-1 text-xs font-bold text-forest-800 bg-sand-200/80 px-2 py-0.5 rounded-md">
@@ -426,8 +430,20 @@ export const PosRegisterView: React.FC = () => {
             </div>
 
             <button
+              type="button"
+              onClick={() => setIsCameraScannerOpen(true)}
+              className="touch-btn min-h-[44px] px-3.5 sm:px-4 py-2.5 bg-[#85522b] hover:bg-[#6e3e1c] text-[#fff6ec] rounded-2xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
+              title="Scanner un code-barres avec la caméra mobile"
+              aria-label="Scanner avec la caméra"
+            >
+              <Camera className="w-4 h-4 text-[#fcdbb6]" />
+              <span className="hidden sm:inline">Scan Caméra</span>
+              <span className="sm:hidden font-extrabold">Caméra</span>
+            </button>
+
+            <button
               type="submit"
-              className="touch-btn px-4 py-2.5 bg-forest-700 hover:bg-forest-800 text-white rounded-2xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+              className="touch-btn min-h-[44px] px-4 py-2.5 bg-forest-700 hover:bg-forest-800 text-white rounded-2xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
             >
               <Barcode className="w-4 h-4" />
               <span>Valider</span>
@@ -436,36 +452,36 @@ export const PosRegisterView: React.FC = () => {
 
           {/* Chips de test EAN : visibles en développement uniquement */}
           {import.meta.env.DEV && (
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-none touch-pan-x">
               <span className="text-ink-600 font-semibold shrink-0 flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-amber-500" />
-                Test rapide EAN :
+                Test EAN :
               </span>
               <button
                 type="button"
                 onClick={() => executeScan('613000000001')}
-                className="touch-btn px-2.5 py-1 bg-white hover:bg-sand-100 border border-sand-200 hover:border-sand-300 text-ink-700 hover:text-forest-800 rounded-xl font-mono transition-colors shrink-0 cursor-pointer"
+                className="touch-btn min-h-[36px] px-2.5 py-1 bg-white hover:bg-sand-100 border border-sand-200 hover:border-sand-300 text-ink-700 hover:text-forest-800 rounded-xl font-mono transition-colors shrink-0 cursor-pointer"
               >
                 Coca-Cola (613000000001)
               </button>
               <button
                 type="button"
                 onClick={() => executeScan('613000000004')}
-                className="touch-btn px-2.5 py-1 bg-white hover:bg-sand-100 border border-sand-200 hover:border-sand-300 text-ink-700 hover:text-forest-800 rounded-xl font-mono transition-colors shrink-0 cursor-pointer"
+                className="touch-btn min-h-[36px] px-2.5 py-1 bg-white hover:bg-sand-100 border border-sand-200 hover:border-sand-300 text-ink-700 hover:text-forest-800 rounded-xl font-mono transition-colors shrink-0 cursor-pointer"
               >
                 Huile Olive (613000000004)
               </button>
               <button
                 type="button"
                 onClick={() => executeScan('613000000012')}
-                className="touch-btn px-2.5 py-1 bg-white hover:bg-sand-100 border border-sand-200 hover:border-sand-300 text-ink-700 hover:text-forest-800 rounded-xl font-mono transition-colors shrink-0 cursor-pointer"
+                className="touch-btn min-h-[36px] px-2.5 py-1 bg-white hover:bg-sand-100 border border-sand-200 hover:border-sand-300 text-ink-700 hover:text-forest-800 rounded-xl font-mono transition-colors shrink-0 cursor-pointer"
               >
                 Écouteurs BT (613000000012)
               </button>
               <button
                 type="button"
                 onClick={() => executeScan('613000000013')}
-                className="touch-btn px-2.5 py-1 bg-white hover:bg-rose-50 border border-sand-200 hover:border-rose-300 text-ink-700 hover:text-rose-700 rounded-xl font-mono transition-colors shrink-0 cursor-pointer"
+                className="touch-btn min-h-[36px] px-2.5 py-1 bg-white hover:bg-rose-50 border border-sand-200 hover:border-rose-300 text-ink-700 hover:text-rose-700 rounded-xl font-mono transition-colors shrink-0 cursor-pointer"
               >
                 Pain Rupture (613000000013)
               </button>
@@ -482,9 +498,9 @@ export const PosRegisterView: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Filtrer les articles par nom ou référence... [F1]"
-                className="w-full pl-9 pr-12 py-2 bg-sand-50 border border-sand-200 rounded-xl text-xs text-ink-900 focus:outline-hidden focus:ring-2 focus:ring-forest-700/20 focus:border-forest-700"
+                className="w-full pl-9 pr-12 py-2.5 bg-sand-50 border border-sand-200 rounded-xl text-base sm:text-xs text-ink-900 focus:outline-hidden focus:ring-2 focus:ring-forest-700/20 focus:border-forest-700"
               />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-xs text-forest-800 bg-sand-100 border border-sand-300 px-1.5 py-0.5 rounded shadow-2xs">
+              <span className="hidden sm:inline absolute right-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-xs text-forest-800 bg-sand-100 border border-sand-300 px-1.5 py-0.5 rounded shadow-2xs">
                 F1
               </span>
             </div>
@@ -492,15 +508,15 @@ export const PosRegisterView: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsCartDrawerOpen(true)}
-              className="lg:hidden touch-btn px-3 py-2 bg-forest-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+              className="lg:hidden touch-btn min-h-[44px] px-3.5 py-2 bg-forest-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
             >
               <ShoppingCart className="w-4 h-4 text-emerald-300" />
               <span>Panier ({cartSummary.totalItems})</span>
             </button>
           </div>
 
-          {/* Keyboard Shortcuts Mapping Bar */}
-          <div className="flex items-center justify-between bg-sand-50 border border-sand-200/80 rounded-xl px-3 py-1.5 text-xs">
+          {/* Keyboard Shortcuts Mapping Bar (Desktop / Tablet) */}
+          <div className="hidden sm:flex items-center justify-between bg-sand-50 border border-sand-200/80 rounded-xl px-3 py-1.5 text-xs">
             <div className="flex items-center gap-2 overflow-x-auto text-xs">
               <span className="font-bold text-ink-600 flex items-center gap-1 shrink-0">
                 <Keyboard className="w-3.5 h-3.5 text-forest-700" />
@@ -543,17 +559,17 @@ export const PosRegisterView: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => setShowShortcutGuideModal(true)}
+              onClick={() => setIsShortcutsModalOpen(true)}
               className="text-xs font-bold text-forest-700 hover:text-forest-900 flex items-center gap-1 shrink-0 cursor-pointer ml-2"
-              title="Guide des raccourcis caisse"
+              title="Guide des raccourcis clavier globaux et caisse"
             >
               <HelpCircle className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Guide</span>
+              <span>Guide [?]</span>
             </button>
           </div>
 
           {/* Category Chips scroll - Accessible min 44px touch targets */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs scrollbar-none touch-pan-x -mx-1 px-1">
             <button
               type="button"
               onClick={() => setSelectedCatId('ALL')}
@@ -746,108 +762,20 @@ export const PosRegisterView: React.FC = () => {
         {isDesktop && <CartPanel />}
       </div>
 
-      {/* Keyboard Shortcuts Guide Modal */}
-      {showShortcutGuideModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/60 backdrop-blur-xs p-3 sm:p-4 pt-[max(1rem,calc(1rem+env(safe-area-inset-top,0px)))] pb-[max(1rem,calc(1rem+env(safe-area-inset-bottom,0px)))] pl-[max(0.75rem,calc(0.75rem+env(safe-area-inset-left,0px)))] pr-[max(0.75rem,calc(0.75rem+env(safe-area-inset-right,0px)))] overflow-y-auto animate-in fade-in duration-150">
-          <div role="dialog" aria-modal="true" aria-labelledby="shortcut-guide-title" className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-sand-200 overflow-hidden">
-            <div className="px-5 py-4 bg-ink-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Keyboard className="w-5 h-5 text-sand-300" />
-                <h3 id="shortcut-guide-title" className="font-bold text-sm">Raccourcis Clavier du Poste Caisse</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowShortcutGuideModal(false)}
-                aria-label="Fermer le guide des raccourcis"
-                className="touch-btn inline-flex items-center justify-center text-sand-300 hover:text-white transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <div className="p-5 space-y-4">
-              <p className="text-xs text-ink-600">
-                Utilisez ces raccourcis clavier pour accélérer les opérations en caisse sans toucher à la souris :
-              </p>
 
-              <div className="space-y-2.5">
-                <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-sand-50 border border-sand-200/80">
-                  <div>
-                    <div className="font-bold text-xs text-ink-900">Cibler la Recherche Produit</div>
-                    <div className="text-xs text-ink-600 mt-0.5">
-                      Place le focus et sélectionne le texte du champ de recherche d'articles.
-                    </div>
-                  </div>
-                  <kbd className="font-mono font-bold text-xs bg-sand-100 text-forest-800 px-2 py-1 rounded-lg border border-sand-300 shadow-2xs shrink-0">
-                    F1
-                  </kbd>
-                </div>
-
-                <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-amber-50/70 border border-amber-200">
-                  <div>
-                    <div className="font-bold text-xs text-amber-950">Basculer entre les 2 Paniers (Caisse Double)</div>
-                    <div className="text-xs text-amber-800 mt-0.5">
-                      Bascule instantanément entre Panier 1 et Panier 2 sans perdre les articles saisis.
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1 items-end shrink-0">
-                    <kbd className="font-mono font-bold text-xs bg-amber-100 text-amber-900 px-2 py-1 rounded-lg border border-amber-300 shadow-2xs">
-                      F2 / Tab
-                    </kbd>
-                    <span className="text-[10px] font-mono text-amber-700">F3 • Alt+1 / Alt+2</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-sand-50 border border-sand-200/80">
-                  <div>
-                    <div className="font-bold text-xs text-ink-900">Initier l'Encaissement (Transaction)</div>
-                    <div className="text-xs text-ink-600 mt-0.5">
-                      Ouvre la fenêtre de règlement et de paiement pour la commande en cours.
-                    </div>
-                  </div>
-                  <kbd className="font-mono font-bold text-xs bg-emerald-50 text-emerald-800 px-2 py-1 rounded-lg border border-emerald-300 shadow-2xs shrink-0">
-                    F9
-                  </kbd>
-                </div>
-
-                <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-sand-50 border border-sand-200/80">
-                  <div>
-                    <div className="font-bold text-xs text-ink-900">Fermer les fenêtres</div>
-                    <div className="text-xs text-ink-600 mt-0.5">
-                      Ferme les fenêtres ouvertes. Le panier n'est jamais vidé par ce raccourci.
-                    </div>
-                  </div>
-                  <kbd className="font-mono font-bold text-xs bg-rose-50 text-rose-800 px-2 py-1 rounded-lg border border-rose-200 shadow-2xs shrink-0">
-                    Échap
-                  </kbd>
-                </div>
-
-                <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-sand-50 border border-sand-200/80">
-                  <div>
-                    <div className="font-bold text-xs text-ink-900">Lecteur Code-barres USB / Bluetooth</div>
-                    <div className="text-xs text-ink-600 mt-0.5">
-                      Validation automatique lors du scan d'un code EAN-13 ou code-barres.
-                    </div>
-                  </div>
-                  <kbd className="font-mono font-bold text-xs bg-sand-100 text-ink-900 px-2 py-1 rounded-lg border border-sand-300 shadow-2xs shrink-0">
-                    Entrée ↵
-                  </kbd>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowShortcutGuideModal(false)}
-                  className="w-full py-2.5 bg-forest-700 hover:bg-forest-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                >
-                  Compris
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Mobile Camera Barcode Scanner Modal for Instant Cart Additions */}
+      <PosCameraScannerModal
+        isOpen={isCameraScannerOpen}
+        onClose={() => setIsCameraScannerOpen(false)}
+        onOpenCart={() => {
+          if (!isDesktop) {
+            setMobilePosTab('cart');
+          } else {
+            setIsCartDrawerOpen(true);
+          }
+        }}
+      />
     </div>
   );
 };

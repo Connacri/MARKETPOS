@@ -215,16 +215,16 @@ export const CustomersView: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Rechercher par nom, entreprise, téléphone..."
-            className="w-full pl-10 pr-4 py-2 sherwood-input text-xs sm:text-sm"
+            className="w-full pl-10 pr-4 py-2.5 min-h-[44px] sherwood-input text-base sm:text-sm"
           />
         </div>
 
-        {/* Tier filter pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs font-bold">
+        {/* Tier filter pills with min 44px touch targets */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs font-bold scrollbar-none touch-pan-x -mx-1 px-1">
           <button
             type="button"
             onClick={() => setTierFilter('ALL')}
-            className={`touch-btn px-3 py-1.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap ${
+            className={`touch-btn min-h-[44px] px-3.5 py-2 rounded-2xl border transition-all cursor-pointer whitespace-nowrap ${
               tierFilter === 'ALL'
                 ? 'bg-[#234931] text-[#fdfbf7] border-[#234931] shadow-2xs'
                 : 'sherwood-btn-outline'
@@ -235,7 +235,7 @@ export const CustomersView: React.FC = () => {
           <button
             type="button"
             onClick={() => setTierFilter('HAS_CART')}
-            className={`touch-btn px-3 py-1.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            className={`touch-btn min-h-[44px] px-3.5 py-2 rounded-2xl border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               tierFilter === 'HAS_CART'
                 ? 'bg-[#234931] text-white border-[#234931] shadow-2xs'
                 : 'sherwood-btn-outline'
@@ -247,7 +247,7 @@ export const CustomersView: React.FC = () => {
           <button
             type="button"
             onClick={() => setTierFilter('GOLD')}
-            className={`touch-btn px-3 py-1.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+            className={`touch-btn min-h-[44px] px-3.5 py-2 rounded-2xl border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
               tierFilter === 'GOLD'
                 ? 'bg-[#85522b] text-white border-[#85522b] shadow-2xs'
                 : 'sherwood-btn-outline'
@@ -259,7 +259,7 @@ export const CustomersView: React.FC = () => {
           <button
             type="button"
             onClick={() => setTierFilter('SILVER')}
-            className={`touch-btn px-3 py-1.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+            className={`touch-btn min-h-[44px] px-3.5 py-2 rounded-2xl border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
               tierFilter === 'SILVER'
                 ? 'bg-[#234931] text-white border-[#234931] shadow-2xs'
                 : 'sherwood-btn-outline'
@@ -271,7 +271,7 @@ export const CustomersView: React.FC = () => {
           <button
             type="button"
             onClick={() => setTierFilter('BRONZE')}
-            className={`touch-btn px-3 py-1.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+            className={`touch-btn min-h-[44px] px-3.5 py-2 rounded-2xl border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
               tierFilter === 'BRONZE'
                 ? 'bg-[#483d31] text-white border-[#483d31] shadow-2xs'
                 : 'sherwood-btn-outline'

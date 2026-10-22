@@ -194,8 +194,8 @@ export const ProductCatalogView: React.FC = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Rechercher par nom, SKU (ex: REF-0001) ou code-barres..."
-                className="w-full pl-10 pr-9 py-2.5 min-h-[44px] sherwood-input text-xs sm:text-sm font-medium"
+                placeholder="Rechercher par nom, SKU ou code-barres..."
+                className="w-full pl-10 pr-9 py-2.5 min-h-[44px] sherwood-input text-base sm:text-sm font-medium"
               />
               {searchQuery && (
                 <button
@@ -239,7 +239,7 @@ export const ProductCatalogView: React.FC = () => {
 
         {/* Tier 2: Stock Status Filter Pills (segmented bar, never overflows parent) */}
         <div className="pt-2 border-t border-[#e7ddca] w-full min-w-0">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full text-xs font-bold scrollbar-none">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full text-xs font-bold scrollbar-none touch-pan-x -mx-1 px-1">
             <button
               type="button"
               onClick={() => setStockFilter('ALL')}
@@ -307,7 +307,7 @@ export const ProductCatalogView: React.FC = () => {
 
         {/* Tier 3: Category Filter Tabs with smooth scroll and container containment */}
         <div className="pt-2 border-t border-[#e7ddca] w-full min-w-0">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full scrollbar-none">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full scrollbar-none touch-pan-x -mx-1 px-1">
             <span className="text-xs text-[#877a6b] font-bold shrink-0 flex items-center gap-1 mr-1">
               <Filter className="w-3.5 h-3.5" />
               Rayons :

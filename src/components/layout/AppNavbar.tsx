@@ -54,7 +54,7 @@ export const AppNavbar: React.FC = () => {
               </div>
               <div className="hidden min-[420px]:block">
                 <div className="font-extrabold text-sm sm:text-base text-slate-800 tracking-tight leading-none">
-                  POS Pro
+                  MARKETPOS
                 </div>
                 <div className="text-[10px] text-slate-400 font-medium tracking-wider uppercase mt-0.5">
                   Multi-Postes
@@ -173,7 +173,7 @@ export const AppNavbar: React.FC = () => {
                   sf.
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900">Navigation POS Pro</h3>
+                  <h3 className="font-bold text-sm text-slate-900">Navigation MARKETPOS</h3>
                   <p className="text-[11px] text-slate-400">Système de caisse & facturation</p>
                 </div>
               </div>
