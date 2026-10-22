@@ -222,9 +222,10 @@ export const SalesHistoryView: React.FC = () => {
                       type="button"
                       onClick={() => setReceiptToPrint(sale)}
                       className="touch-btn min-h-[44px] py-2 sherwood-btn-forest text-xs font-bold flex items-center justify-center gap-1.5"
+                      title="Aperçu du ticket de caisse thermique (80mm/58mm)"
                     >
-                      <Printer className="w-4 h-4" />
-                      <span>Ticket 80mm</span>
+                      <Receipt className="w-4 h-4 text-emerald-200" />
+                      <span>Aperçu Ticket</span>
                     </button>
                   </div>
                 </div>
@@ -301,11 +302,11 @@ export const SalesHistoryView: React.FC = () => {
                               e.stopPropagation();
                               setReceiptToPrint(sale);
                             }}
-                            className="touch-btn min-h-[36px] px-3 py-1.5 sherwood-btn-forest text-[11px] font-bold inline-flex items-center gap-1"
-                            title="Imprimer le ticket de caisse"
+                            className="touch-btn min-h-[36px] px-3 py-1.5 sherwood-btn-forest text-[11px] font-bold inline-flex items-center gap-1.5"
+                            title="Aperçu et impression du ticket de caisse thermique (80mm/58mm)"
                           >
-                            <Printer className="w-3.5 h-3.5" />
-                            <span>Ticket</span>
+                            <Receipt className="w-3.5 h-3.5 text-emerald-200" />
+                            <span>Aperçu Ticket</span>
                           </button>
                         </div>
                       </td>

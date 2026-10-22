@@ -703,13 +703,16 @@ export const PosRegisterView: React.FC = () => {
                     </div>
 
                     {/* Price and tap to add button (min 44px touch area) */}
-                    <div className="mt-2 pt-2 border-t border-sand-100 flex items-center justify-between gap-1 min-w-0">
-                      <div className="font-black text-base sm:text-lg text-forest-800 font-mono whitespace-nowrap leading-none">
+                    <div className="mt-2 pt-2 border-t border-sand-100 flex items-center justify-between gap-1.5 min-w-0 w-full">
+                      <div
+                        className="font-black text-forest-800 font-mono whitespace-nowrap leading-none tracking-tight flex-1"
+                        style={{ fontSize: '18px' }}
+                      >
                         {formatMoney(p.price)}
                       </div>
                       <span
                         aria-hidden="true"
-                        className="touch-btn w-10 h-10 rounded-xl bg-sand-100 group-hover:bg-forest-700 text-forest-800 group-hover:text-white flex items-center justify-center transition-colors shadow-2xs"
+                        className="touch-btn w-10 h-10 rounded-xl bg-sand-100 group-hover:bg-forest-700 text-forest-800 group-hover:text-white flex items-center justify-center transition-colors shadow-2xs shrink-0"
                       >
                         <Plus className="w-4 h-4" />
                       </span>

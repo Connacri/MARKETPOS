@@ -43,6 +43,8 @@ import {
 
 
 import { SUPABASE_SCHEMA_SQL, SUPABASE_SEED_SQL } from '../../data/supabaseSql';
+import { NEON_SCHEMA_SQL, NEON_CONNECTION_HELP } from '../../data/neonSql';
+import type { CloudProvider } from '../../services/supabaseSyncService';
 
 export const AdminSyncView: React.FC = () => {
   const {
@@ -62,6 +64,11 @@ export const AdminSyncView: React.FC = () => {
 
   // Active sub-tab
   const [activeTab, setActiveTab] = useState<'cloud' | 'schema' | 'printer' | 'benchmark' | 'logs'>('cloud');
+
+  // Cloud provider & state
+  const [cloudProvider, setCloudProvider] = useState<CloudProvider>(supabaseConfig.provider || 'NEON');
+  const [neonConnectionString, setNeonConnectionString] = useState(supabaseConfig.neonConnectionString || '');
+  const [showNeonSecret, setShowNeonSecret] = useState(false);
 
   // Supabase form state
   const [url, setUrl] = useState(supabaseConfig.url);
@@ -86,7 +93,7 @@ export const AdminSyncView: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<number>(0);
   const [hasCopiedSql, setHasCopiedSql] = useState(false);
-  const [activeSqlDoc, setActiveSqlDoc] = useState<'schema' | 'seed'>('schema');
+  const [activeSqlDoc, setActiveSqlDoc] = useState<'schema' | 'seed' | 'neon'>('schema');
 
   // Benchmark state
   const [isBenchmarking, setIsBenchmarking] = useState(false);
@@ -175,20 +182,37 @@ export const AdminSyncView: React.FC = () => {
     e.preventDefault();
     updateSupabaseConfig({
       ...supabaseConfig,
+      provider: cloudProvider,
+      neonConnectionString,
       url,
       anonKey,
       syncDirection,
       autoSyncEnabled: autoSync,
     });
-    supabaseSyncService.addLog('SUCCESS', 'Paramètres de synchronisation Supabase enregistrés');
+    supabaseSyncService.addLog(
+      'SUCCESS',
+      `Paramètres Cloud (${cloudProvider === 'NEON' ? 'Neon Serverless Postgres' : 'Supabase'}) enregistrés avec succès`
+    );
   };
 
   // Test connection
   const handleTestConnection = async () => {
     setIsTesting(true);
     setTestResult(null);
-    const res = await supabaseSyncService.testConnection(url, anonKey);
-    setTestResult(res);
+    if (cloudProvider === 'DUAL') {
+      const res = await supabaseSyncService.testDualDatabase();
+      setTestResult({
+        success: res.success,
+        message: res.message,
+        latencyMs: Math.max(res.supabaseLatency, res.neonLatency),
+      });
+    } else if (cloudProvider === 'NEON') {
+      const res = await supabaseSyncService.testNeonConnection(neonConnectionString);
+      setTestResult(res);
+    } else {
+      const res = await supabaseSyncService.testConnection(url, anonKey);
+      setTestResult(res);
+    }
     setIsTesting(false);
   };
 
@@ -214,26 +238,44 @@ export const AdminSyncView: React.FC = () => {
     }, 400);
   };
 
-  // Copy SQL script to clipboard (schema or seed)
+  // Copy SQL script to clipboard (schema, seed, or neon)
   const handleCopySql = async () => {
     try {
-      const sqlContent = activeSqlDoc === 'schema' ? SUPABASE_SCHEMA_SQL : SUPABASE_SEED_SQL;
+      const sqlContent =
+        activeSqlDoc === 'neon'
+          ? NEON_SCHEMA_SQL
+          : activeSqlDoc === 'schema'
+          ? SUPABASE_SCHEMA_SQL
+          : SUPABASE_SEED_SQL;
       await navigator.clipboard.writeText(sqlContent);
       setHasCopiedSql(true);
       setTimeout(() => setHasCopiedSql(false), 2500);
-      supabaseSyncService.addLog(
-        'INFO',
-        `Script SQL (${activeSqlDoc === 'schema' ? 'Schéma DDL' : 'Seed démo'}) copié dans le presse-papiers`
-      );
+      const docLabel =
+        activeSqlDoc === 'neon'
+          ? 'Schéma Neon PostgreSQL'
+          : activeSqlDoc === 'schema'
+          ? 'Schéma DDL Supabase'
+          : 'Seed démo';
+      supabaseSyncService.addLog('INFO', `Script SQL (${docLabel}) copié dans le presse-papiers`);
     } catch {
       supabaseSyncService.addLog('WARNING', 'Impossible de copier le script automatiquement');
     }
   };
 
-  // Download schema.sql or seed.sql file
+  // Download schema.sql, seed.sql, or neon-schema.sql file
   const handleDownloadSql = () => {
-    const sqlContent = activeSqlDoc === 'schema' ? SUPABASE_SCHEMA_SQL : SUPABASE_SEED_SQL;
-    const fileName = activeSqlDoc === 'schema' ? 'supabase-schema-pos.sql' : 'supabase-seed-pos.sql';
+    const sqlContent =
+      activeSqlDoc === 'neon'
+        ? NEON_SCHEMA_SQL
+        : activeSqlDoc === 'schema'
+        ? SUPABASE_SCHEMA_SQL
+        : SUPABASE_SEED_SQL;
+    const fileName =
+      activeSqlDoc === 'neon'
+        ? 'neon-schema-pos.sql'
+        : activeSqlDoc === 'schema'
+        ? 'supabase-schema-pos.sql'
+        : 'supabase-seed-pos.sql';
     const blob = new Blob([sqlContent], { type: 'text/sql;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -445,54 +487,168 @@ export const AdminSyncView: React.FC = () => {
             )}
 
             <form onSubmit={handleSaveConfig} className="space-y-5">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-[#483d31]">
-                  URL du projet Supabase
+              {/* Cloud Provider Switcher */}
+              <div className="space-y-1.5 p-3.5 bg-[#f4ece1] rounded-2xl border border-[#ded3be]">
+                <label className="block text-xs font-black uppercase tracking-wider text-[#483d31]">
+                  Moteur Cloud Backend Actif
                 </label>
-                <div className="relative">
-                  <input
-                    type="url"
-                    required
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder="https://xyzcompany.supabase.co"
-                    className="w-full pl-3.5 pr-10 py-3 min-h-[46px] sherwood-input text-xs sm:text-sm font-mono"
-                  />
-                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#877a6b] pointer-events-none">
-                    <Server className="w-4 h-4" />
-                  </div>
-                </div>
-                <span className="text-[11px] text-[#877a6b] block font-medium leading-normal">
-                  Accessible depuis votre tableau de bord Supabase : Project Settings → API → Project URL
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-[#483d31]">
-                  Clé Publique Anonyme (Anon Key)
-                </label>
-                <div className="relative">
-                  <input
-                    type={showAnonKey ? 'text' : 'password'}
-                    required
-                    value={anonKey}
-                    onChange={(e) => setAnonKey(e.target.value)}
-                    placeholder="••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••"
-                    className="w-full pl-3.5 pr-12 py-3 min-h-[46px] sherwood-input text-xs sm:text-sm font-mono tracking-wider"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => setShowAnonKey(!showAnonKey)}
-                    aria-label={showAnonKey ? 'Masquer la clé' : 'Afficher la clé'}
-                    className="touch-btn absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center text-[#877a6b] hover:text-[#2c241c] rounded-xl transition-colors cursor-pointer"
+                    onClick={() => {
+                      setCloudProvider('DUAL');
+                      setTestResult(null);
+                    }}
+                    className={`touch-btn py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                      cloudProvider === 'DUAL'
+                        ? 'bg-[#1f3d29] text-white border-[#16311f] shadow-sm font-black'
+                        : 'bg-white text-[#483d31] hover:bg-[#faf7f0] border-[#ded3be]'
+                    }`}
                   >
-                    {showAnonKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <Layers className="w-3.5 h-3.5 text-[#86efac]" />
+                    <span>Double Base (Supabase + Neon)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCloudProvider('NEON');
+                      setTestResult(null);
+                    }}
+                    className={`touch-btn py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                      cloudProvider === 'NEON'
+                        ? 'bg-[#1f3d29] text-white border-[#16311f] shadow-sm font-black'
+                        : 'bg-white text-[#483d31] hover:bg-[#faf7f0] border-[#ded3be]'
+                    }`}
+                  >
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#00e599]" />
+                    <span>Neon Postgres 16</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCloudProvider('SUPABASE');
+                      setTestResult(null);
+                    }}
+                    className={`touch-btn py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                      cloudProvider === 'SUPABASE'
+                        ? 'bg-[#1f3d29] text-white border-[#16311f] shadow-sm font-black'
+                        : 'bg-white text-[#483d31] hover:bg-[#faf7f0] border-[#ded3be]'
+                    }`}
+                  >
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#3ecf8e]" />
+                    <span>Supabase Cloud</span>
                   </button>
                 </div>
-                <span className="text-[11px] text-[#877a6b] block font-medium leading-normal">
-                  Clé de niveau client pour la synchronisation POS sécurisée par RLS (Row Level Security).
-                </span>
               </div>
+
+              {/* Provider Specific Inputs */}
+              {(cloudProvider === 'NEON' || cloudProvider === 'DUAL') && (
+                <div className="space-y-4 p-4 bg-white rounded-2xl border border-[#ded3be] shadow-2xs">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-[#483d31]">
+                        Chaîne de Connexion Neon (PostgreSQL Connection String URI)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowNeonSecret(!showNeonSecret)}
+                        className="text-xs text-[#877a6b] hover:text-[#234931] flex items-center gap-1 cursor-pointer font-bold"
+                      >
+                        {showNeonSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        <span>{showNeonSecret ? 'Masquer' : 'Afficher'}</span>
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type={showNeonSecret ? 'text' : 'password'}
+                        required
+                        value={neonConnectionString}
+                        onChange={(e) => setNeonConnectionString(e.target.value)}
+                        placeholder="postgresql://user:password@ep-xyz.eu-central-1.aws.neon.tech/neondb?sslmode=require"
+                        className="w-full pl-3.5 pr-10 py-3 min-h-[46px] sherwood-input text-xs sm:text-sm font-mono"
+                      />
+                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#877a6b] pointer-events-none">
+                        <Database className="w-4 h-4 text-[#00e599]" />
+                      </div>
+                    </div>
+
+                    <span className="text-[11px] text-[#877a6b] block font-medium leading-normal">
+                      Accessible depuis la console Neon : <strong>Dashboard → Connection Details → Connection String</strong>. Le mode <code>-pooler</code> est recommandé.
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+                    <div className="p-2.5 rounded-xl bg-[#faf7f0] border border-[#ede5d6]">
+                      <span className="text-[#877a6b] block">Moteur</span>
+                      <span className="font-bold text-[#1f3d29]">PostgreSQL 16</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-[#faf7f0] border border-[#ede5d6]">
+                      <span className="text-[#877a6b] block">Architecture</span>
+                      <span className="font-bold text-[#1f3d29]">Serverless Autoscale</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-[#faf7f0] border border-[#ede5d6] col-span-2 sm:col-span-1">
+                      <span className="text-[#877a6b] block">SSL</span>
+                      <span className="font-bold text-emerald-800">Obligatoire (?sslmode=require)</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(cloudProvider === 'SUPABASE' || cloudProvider === 'DUAL') && (
+                <div className="space-y-4 p-4 bg-white rounded-2xl border border-[#ded3be] shadow-2xs">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-[#483d31]">
+                      URL du projet Supabase
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="url"
+                        required
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        placeholder="https://xyzcompany.supabase.co"
+                        className="w-full pl-3.5 pr-10 py-3 min-h-[46px] sherwood-input text-xs sm:text-sm font-mono"
+                      />
+                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#877a6b] pointer-events-none">
+                        <Server className="w-4 h-4" />
+                      </div>
+                    </div>
+                    <span className="text-[11px] text-[#877a6b] block font-medium leading-normal">
+                      Accessible depuis votre tableau de bord Supabase : Project Settings → API → Project URL
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-[#483d31]">
+                      Clé Publique Anonyme (Anon Key)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showAnonKey ? 'text' : 'password'}
+                        required
+                        value={anonKey}
+                        onChange={(e) => setAnonKey(e.target.value)}
+                        placeholder="••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••"
+                        className="w-full pl-3.5 pr-12 py-3 min-h-[46px] sherwood-input text-xs sm:text-sm font-mono tracking-wider"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAnonKey(!showAnonKey)}
+                        aria-label={showAnonKey ? 'Masquer la clé' : 'Afficher la clé'}
+                        className="touch-btn absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center text-[#877a6b] hover:text-[#2c241c] rounded-xl transition-colors cursor-pointer"
+                      >
+                        {showAnonKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <span className="text-[11px] text-[#877a6b] block font-medium leading-normal">
+                      Clé de niveau client pour la synchronisation POS sécurisée par RLS (Row Level Security).
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
@@ -707,15 +863,31 @@ export const AdminSyncView: React.FC = () => {
                   }`}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>2. Données de Démonstration (seed.sql)</span>
+                  <span>2. Données Démo (seed.sql)</span>
                   <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono ${activeSqlDoc === 'seed' ? 'bg-white/20' : 'bg-[#e5d9c6]'}`}>
                     18 articles & clients
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSqlDoc('neon')}
+                  className={`touch-btn px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    activeSqlDoc === 'neon'
+                      ? 'bg-[#1f3d29] text-white shadow-xs font-black'
+                      : 'text-[#605547] hover:text-[#1f3d29] hover:bg-white/60'
+                  }`}
+                >
+                  <Database className="w-3.5 h-3.5 text-[#00e599]" />
+                  <span>3. Schéma Neon Serverless (neon.sql)</span>
+                  <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono ${activeSqlDoc === 'neon' ? 'bg-white/20' : 'bg-[#e5d9c6]'}`}>
+                    Postgres 16 + Pooling
                   </span>
                 </button>
               </div>
 
               <div className="text-[11px] text-[#706453] px-3 font-medium">
-                PostgreSQL 15+ • UTF-8 • Idempotent (IF NOT EXISTS / ON CONFLICT)
+                PostgreSQL 16+ • UTF-8 • Idempotent (IF NOT EXISTS / ON CONFLICT)
               </div>
             </div>
 
@@ -727,15 +899,8 @@ export const AdminSyncView: React.FC = () => {
                 'customers',
                 'sales',
                 'sale_items',
-                'returns',
-                'return_items',
-                'invoices',
-                'invoice_items',
-                'payments',
-                'stock_movements',
-                'printer_settings',
-                'sync_logs',
-                'v_daily_sales_revenue',
+                'sync_audit_log',
+                'v_daily_revenue_summary',
               ].map((table) => (
                 <span
                   key={table}
@@ -749,7 +914,11 @@ export const AdminSyncView: React.FC = () => {
             {/* SQL Code Block */}
             <div className="relative rounded-2xl bg-[#1e231f] text-[#d6e2d8] border border-[#2d3b2f] p-4 font-mono text-xs overflow-x-auto shadow-inner">
               <pre className="leading-relaxed whitespace-pre font-mono-pos max-h-[480px] overflow-y-auto pr-2">
-                {activeSqlDoc === 'schema' ? SUPABASE_SCHEMA_SQL : SUPABASE_SEED_SQL}
+                {activeSqlDoc === 'neon'
+                  ? NEON_SCHEMA_SQL
+                  : activeSqlDoc === 'schema'
+                  ? SUPABASE_SCHEMA_SQL
+                  : SUPABASE_SEED_SQL}
               </pre>
             </div>
 

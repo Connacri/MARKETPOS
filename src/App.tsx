@@ -78,14 +78,14 @@ export const AppLayout: React.FC = () => {
       if ((e.key === '?' || e.key === 'F12' || (e.key === '/' && e.shiftKey)) && !isInput) {
         e.preventDefault();
         e.stopPropagation();
-        setIsShortcutsModalOpen((prev) => !prev);
+        setIsShortcutsModalOpen(!isShortcutsModalOpen);
         return;
       }
     };
 
     window.addEventListener('keydown', handleGlobalShortcuts, true);
     return () => window.removeEventListener('keydown', handleGlobalShortcuts, true);
-  }, [switchCart, setIsShortcutsModalOpen]);
+  }, [switchCart, isShortcutsModalOpen, setIsShortcutsModalOpen]);
 
   // Handle escape key to close mobile drawer or shortcuts modal (WCAG accessibility)
   React.useEffect(() => {

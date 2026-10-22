@@ -10,7 +10,9 @@ import {
   ArrowLeftRight,
   PanelLeftClose,
   PanelLeftOpen,
+  Cloud,
 } from 'lucide-react';
+import { CloudConnectionModal } from './CloudConnectionModal';
 
 export const SherwoodHeader: React.FC = () => {
   const {
@@ -31,6 +33,7 @@ export const SherwoodHeader: React.FC = () => {
 
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDate, setCurrentDate] = useState<string>('');
+  const [isCloudModalOpen, setIsCloudModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -93,8 +96,8 @@ export const SherwoodHeader: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Status: Un point vert quand en ligne (ou badge hors-ligne) */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Right Status: Un point vert quand en ligne (ou badge hors-ligne) + Bouton Connexion Cloud */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => setIsOffline(!isOffline)}
@@ -127,6 +130,18 @@ export const SherwoodHeader: React.FC = () => {
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-xs border border-emerald-600" />
                 </span>
               )}
+            </button>
+
+            {/* Bouton de connexion avec le Cloud (Mobile) */}
+            <button
+              type="button"
+              onClick={() => setIsCloudModalOpen(true)}
+              className="touch-btn min-h-[40px] px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 border border-[#bae6fd] bg-[#f0f9ff] hover:bg-[#e0f2fe] text-[#0369a1] transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95"
+              title="Connexion Cloud (Supabase)"
+              aria-label="Connexion avec le Cloud"
+            >
+              <Cloud className="w-3.5 h-3.5 text-[#0284c7] shrink-0" />
+              <span className="text-[11px] font-black">Cloud</span>
             </button>
           </div>
         </div>
@@ -309,6 +324,22 @@ export const SherwoodHeader: React.FC = () => {
             )}
           </button>
 
+          {/* Bouton de connexion avec le Cloud (Desktop) placé juste à côté du bouton vert de connexion */}
+          <button
+            type="button"
+            onClick={() => setIsCloudModalOpen(true)}
+            className="touch-btn min-h-[38px] px-3 py-1.5 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 border border-[#bae6fd] bg-[#f0f9ff] hover:bg-[#e0f2fe] text-[#0369a1] transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95"
+            title="Connexion avec le Cloud Supabase (cliquer pour voir l'état et synchroniser)"
+            aria-label="Connexion avec le Cloud"
+          >
+            <Cloud className="w-3.5 h-3.5 text-[#0284c7] shrink-0" />
+            <span className="font-bold">Cloud</span>
+            <span className="relative flex h-2 w-2 items-center justify-center">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-sky-500" />
+            </span>
+          </button>
+
           {/* Dual Cart Indicator & Switcher with totals and F2/Tab badges */}
           <div
             className={`flex items-center gap-1.5 p-1 rounded-2xl border transition-all shadow-2xs shrink-0 ${
@@ -362,6 +393,12 @@ export const SherwoodHeader: React.FC = () => {
 
         </div>
       </div>
+
+      {/* Cloud Connection & Sync Modal */}
+      <CloudConnectionModal
+        isOpen={isCloudModalOpen}
+        onClose={() => setIsCloudModalOpen(false)}
+      />
     </header>
   );
 };

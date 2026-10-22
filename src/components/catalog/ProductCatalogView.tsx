@@ -37,7 +37,18 @@ export const ProductCatalogView: React.FC = () => {
     setIsCartDrawerOpen,
     openNewProductModal,
     setOpenNewProductModal,
+    showToast,
   } = usePos();
+
+  // Fast stock correction action
+  const handleQuickStock = (product: Product, delta: number) => {
+    const newStock = Math.max(0, product.stock + delta);
+    updateProduct({ ...product, stock: newStock });
+    showToast(
+      `${product.name} : stock ajusté à ${newStock} unité${newStock > 1 ? 's' : ''}`,
+      delta > 0 ? 'success' : 'info'
+    );
+  };
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -532,6 +543,55 @@ export const ProductCatalogView: React.FC = () => {
                         <Barcode className="w-3.5 h-3.5" />
                         {product.barcode.slice(-4)}
                       </span>
+                    </div>
+
+                    {/* Inline Quick Stock Increment/Decrement Correction */}
+                    <div className="mt-2.5 flex items-center justify-between gap-2 p-1.5 px-2.5 bg-[#f8f5ee] rounded-xl border border-[#ded3be] text-xs">
+                      <span className="text-[11px] font-bold text-[#605547] flex items-center gap-1 truncate">
+                        <span>Ajuster stock :</span>
+                      </span>
+                      <div className="inline-flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleQuickStock(product, -1);
+                          }}
+                          disabled={product.stock <= 0}
+                          aria-label={`Diminuer le stock de ${product.name} de 1`}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-white text-[#85522b] hover:bg-[#ede5d6] active:bg-[#e0d4c0] border border-[#d8cdba] disabled:opacity-30 font-black text-sm transition-colors cursor-pointer disabled:cursor-not-allowed shadow-2xs"
+                          title="Diminuer stock (-1 unité)"
+                        >
+                          -1
+                        </button>
+                        <span className="min-w-[28px] text-center font-mono font-black text-xs text-[#1f3d29]">
+                          {product.stock}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleQuickStock(product, 1);
+                          }}
+                          aria-label={`Ajouter 1 unité de stock à ${product.name}`}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#234931] text-white hover:bg-[#193623] active:bg-[#12281a] font-black text-xs transition-colors cursor-pointer shadow-2xs"
+                          title="Ajouter 1 unité (+1 unité)"
+                        >
+                          +1
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleQuickStock(product, 5);
+                          }}
+                          aria-label={`Ajouter 5 unités de stock à ${product.name}`}
+                          className="px-2 h-7 flex items-center justify-center rounded-lg bg-white text-[#234931] hover:bg-[#ede5d6] active:bg-[#e0d4c0] border border-[#d8cdba] font-bold text-[11px] font-mono transition-colors cursor-pointer shadow-2xs"
+                          title="Ajout rapide de 5 unités (+5 unités)"
+                        >
+                          +5
+                        </button>
+                      </div>
                     </div>
 
                     {/* Reorder Needs Visual Indicator Panel */}

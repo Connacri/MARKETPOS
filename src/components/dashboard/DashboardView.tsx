@@ -3,6 +3,9 @@ import { usePos } from '../../context/PosContext';
 import { D3RevenueTrendChart } from './D3RevenueTrendChart';
 import { DailyRevenueChart } from './DailyRevenueChart';
 import { InventoryAlertWidget } from './InventoryAlertWidget';
+import { MultiPeriodRevenueCard } from './MultiPeriodRevenueCard';
+import { QuickAddCartFab } from './QuickAddCartFab';
+import { PrintableReceiptModal } from '../receipt/PrintableReceiptModal';
 import {
   TrendingUp,
   Layers,
@@ -18,19 +21,25 @@ import {
   Clock,
   ArrowUpRight,
   Tag,
-  ShoppingBag,
   Zap,
   ShoppingCart,
   PlusCircle,
   FileText,
+  Eye,
+  ShieldCheck,
+  Percent,
+  Target,
+  Trophy,
+  Sparkles,
+  Flame,
 } from 'lucide-react';
-import type { PaymentMethod } from '../../types';
+import type { PaymentMethod, Sale } from '../../types';
 
 export type TimePeriod = 'today' | 'week' | 'month' | '2months' | '6months' | 'year' | 'custom';
 
 const PAYMENT_LABELS: Record<PaymentMethod, { label: string; textCls: string }> = {
-  CASH: { label: 'Espèces', textCls: 'text-forest-800' },
-  CARD: { label: 'Carte CIB', textCls: 'text-sky-800' },
+  CASH: { label: 'Espèces', textCls: 'text-[#1f3d29]' },
+  CARD: { label: 'Carte CIB', textCls: 'text-[#0284c7]' },
   TRANSFER: { label: 'Virement', textCls: 'text-purple-800' },
   CHEQUE: { label: 'Chèque', textCls: 'text-amber-800' },
 };
@@ -84,7 +93,7 @@ const PERIOD_CONFIG: Record<
 };
 
 const formatMoney = (val: number) =>
-  new Intl.NumberFormat('fr-DZ', { maximumFractionDigits: 0 }).format(val) + '\u00A0DA';
+  new Intl.NumberFormat('fr-DZ', { maximumFractionDigits: 0 }).format(Math.round(val)) + '\u00A0DA';
 
 const formatSaleDate = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', {
@@ -97,17 +106,17 @@ const formatSaleDate = (iso: string) =>
 interface KpiCardProps {
   label: string;
   value: string;
-  periodLabel: string;
+  subValue?: string;
   hint: string;
   icon: React.FC<{ className?: string }>;
-  tone?: 'default' | 'warning' | 'success';
+  tone?: 'default' | 'warning' | 'success' | 'forest' | 'wood';
   onClick?: () => void;
 }
 
 const KpiCard: React.FC<KpiCardProps> = ({
   label,
   value,
-  periodLabel,
+  subValue,
   hint,
   icon: Icon,
   tone = 'default',
@@ -117,34 +126,38 @@ const KpiCard: React.FC<KpiCardProps> = ({
   const isSuccess = tone === 'success';
 
   const cardContent = (
-    <div className="flex flex-col justify-between h-full space-y-4">
-      {/* Top row: Label & Icon */}
+    <div className="flex flex-col justify-between h-full space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-semibold uppercase tracking-wider text-ink-600 truncate">
+          <div className="text-[11px] font-black uppercase tracking-wider text-[#7d6f5f] truncate">
             {label}
           </div>
           <div
-            className={`text-3xl sm:text-4xl font-black font-serif-title font-mono tabular-nums tracking-tight leading-none mt-2 whitespace-nowrap overflow-hidden text-ellipsis ${
+            className={`text-2xl sm:text-3xl font-black font-serif-title font-mono tabular-nums tracking-tight leading-none mt-1.5 whitespace-nowrap overflow-hidden text-ellipsis ${
               isWarning
-                ? 'text-amber-900'
+                ? 'text-[#9a3412]'
                 : isSuccess
-                ? 'text-forest-800'
-                : 'text-forest-900'
+                ? 'text-[#1b3d24]'
+                : 'text-[#1f3d29]'
             }`}
             title={value}
           >
             {value}
           </div>
+          {subValue && (
+            <div className="text-xs text-[#85522b] font-mono font-bold mt-1 truncate">
+              {subValue}
+            </div>
+          )}
         </div>
 
         <div
-          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+          className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 transition-transform ${
             isWarning
-              ? 'bg-amber-100 text-amber-800'
+              ? 'bg-[#faece1] text-[#a85a18] border border-[#f0c8a8]'
               : isSuccess
-              ? 'bg-emerald-100 text-emerald-800'
-              : 'bg-sand-100 text-forest-800 group-hover:bg-sand-200'
+              ? 'bg-[#edf5ec] text-[#1b3d24] border border-[#b4dbb6]'
+              : 'bg-[#faf7f0] text-[#1f3d29] border border-[#ded3be] group-hover:scale-105'
           }`}
           aria-hidden="true"
         >
@@ -152,91 +165,53 @@ const KpiCard: React.FC<KpiCardProps> = ({
         </div>
       </div>
 
-      {/* Bottom row: Clean unboxed metadata with separator */}
-      <div className="pt-3 border-t border-sand-200/80 flex items-center justify-between text-xs text-ink-600 font-medium">
-        <div className="flex items-center gap-1.5 truncate">
-          <span className="font-semibold text-ink-700">{periodLabel}</span>
-          <span aria-hidden="true" className="text-sand-300">·</span>
-          <span className="truncate">{hint}</span>
-        </div>
+      <div className="pt-2.5 border-t border-[#ede5d6] flex items-center justify-between text-[11px] text-[#7d6f5f] font-medium">
+        <span className="truncate">{hint}</span>
         {onClick && (
-          <ArrowUpRight className="w-4 h-4 text-forest-700 shrink-0 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+          <span className="text-[#1f3d29] font-bold flex items-center gap-0.5 shrink-0">
+            <span>Détails</span>
+            <ChevronRight className="w-3 h-3" />
+          </span>
         )}
       </div>
     </div>
   );
-
-  const baseClasses = `sherwood-card p-5 text-left w-full transition-all duration-200 group relative ${
-    isWarning
-      ? 'border-amber-300 bg-amber-50/40 hover:border-amber-400'
-      : isSuccess
-      ? 'border-emerald-200 bg-emerald-50/20 hover:border-emerald-300'
-      : 'hover:border-sand-300 hover:shadow-xs'
-  }`;
 
   if (onClick) {
     return (
       <button
         type="button"
         onClick={onClick}
-        className={`${baseClasses} cursor-pointer focus-visible:ring-4 focus-visible:ring-forest-700/40`}
-        aria-label={`${label} : ${value}. Période : ${periodLabel}. ${hint}`}
+        className="group bg-white p-5 rounded-3xl border border-[#ded3be] shadow-2xs hover:border-[#1f3d29]/40 hover:shadow-xs transition-all text-left w-full cursor-pointer focus-visible:outline-2 focus-visible:outline-[#1f3d29]"
       >
         {cardContent}
       </button>
     );
   }
 
-  return <div className={baseClasses}>{cardContent}</div>;
+  return (
+    <div className="bg-white p-5 rounded-3xl border border-[#ded3be] shadow-2xs">
+      {cardContent}
+    </div>
+  );
 };
 
-const SectionHeader: React.FC<{
-  title: string;
-  hint?: string;
-  icon?: React.FC<{ className?: string }>;
-  action?: { label: string; onClick: () => void };
-}> = ({ title, hint, icon: Icon, action }) => (
-  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-sand-200">
-    <div className="flex items-center gap-3 min-w-0">
-      {Icon && (
-        <div className="w-8 h-8 rounded-xl bg-sand-100 text-forest-800 flex items-center justify-center shrink-0 border border-sand-200/70">
-          <Icon className="w-4 h-4" />
-        </div>
-      )}
-      <div className="min-w-0">
-        <h3 className="font-bold text-sm sm:text-base text-forest-900 font-serif-title leading-tight truncate">
-          {title}
-        </h3>
-        {hint && (
-          <p className="text-xs text-ink-600 mt-0.5 leading-snug truncate">{hint}</p>
-        )}
-      </div>
-    </div>
-    {action && (
-      <button
-        type="button"
-        onClick={action.onClick}
-        className="touch-btn text-xs font-bold text-forest-800 hover:text-forest-900 hover:underline cursor-pointer shrink-0 self-end sm:self-auto flex items-center gap-1"
-      >
-        <span>{action.label}</span>
-        <ChevronRight className="w-3.5 h-3.5" />
-      </button>
-    )}
-  </div>
-);
-
-const EmptyState: React.FC<{ text: string }> = ({ text }) => (
-  <div className="py-10 text-center text-xs text-ink-600 flex flex-col items-center justify-center gap-2.5">
-    <div className="w-10 h-10 rounded-full bg-sand-100 flex items-center justify-center text-sand-300 border border-sand-200/80">
-      <Package className="w-5 h-5" />
-    </div>
-    <p className="max-w-xs font-medium">{text}</p>
-  </div>
-);
-
 export const DashboardView: React.FC = () => {
-  const { sales, products, categories, setActiveView, setOpenNewProductModal } = usePos();
+  const {
+    sales,
+    products,
+    categories,
+    customers,
+    setActiveView,
+    setOpenNewProductModal,
+    isOffline,
+  } = usePos();
+
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('today');
+  const [chartTab, setChartTab] = useState<'d3-trend' | 'bar-breakdown'>('d3-trend');
+  const [previewSale, setPreviewSale] = useState<Sale | null>(null);
+
+  // Custom date range state
   const [customStartDate, setCustomStartDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -245,39 +220,20 @@ export const DashboardView: React.FC = () => {
   const [customEndDate, setCustomEndDate] = useState<string>(() => {
     return new Date().toISOString().split('T')[0];
   });
-  const [chartTab, setChartTab] = useState<'d3-trend' | 'bar-breakdown'>('d3-trend');
 
-  // Ventes valides (hors ventes annulées), ordonnées de la plus récente à la plus ancienne
   const validSales = useMemo(
-    () =>
-      sales
-        .filter((s) => s.status !== 'CANCELLED')
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    () => sales.filter((s) => s.status !== 'CANCELLED'),
     [sales]
   );
 
-  // Ventes filtrées dynamiquement selon la période sélectionnée
+  // Sales filtered by active period
   const periodSales = useMemo(() => {
     const now = new Date();
-    const todayYear = now.getFullYear();
-    const todayMonth = now.getMonth();
-    const todayDate = now.getDate();
-
-    if (selectedPeriod === 'today') {
-      return validSales.filter((s) => {
-        const d = new Date(s.createdAt);
-        return (
-          d.getFullYear() === todayYear &&
-          d.getMonth() === todayMonth &&
-          d.getDate() === todayDate
-        );
-      });
-    }
 
     if (selectedPeriod === 'custom') {
-      const start = customStartDate ? new Date(customStartDate) : new Date(0);
+      const start = new Date(customStartDate);
       start.setHours(0, 0, 0, 0);
-      const end = customEndDate ? new Date(customEndDate) : new Date();
+      const end = new Date(customEndDate);
       end.setHours(23, 59, 59, 999);
       return validSales.filter((s) => {
         const d = new Date(s.createdAt);
@@ -286,73 +242,86 @@ export const DashboardView: React.FC = () => {
     }
 
     const cutoff = new Date(now);
-    if (selectedPeriod === 'week') {
-      cutoff.setDate(cutoff.getDate() - 7);
+    if (selectedPeriod === 'today') {
+      cutoff.setHours(0, 0, 0, 0);
+      return validSales.filter((s) => new Date(s.createdAt) >= cutoff);
+    } else if (selectedPeriod === 'week') {
+      cutoff.setDate(now.getDate() - 7);
     } else if (selectedPeriod === 'month') {
-      cutoff.setDate(cutoff.getDate() - 30);
+      cutoff.setDate(now.getDate() - 30);
     } else if (selectedPeriod === '2months') {
-      cutoff.setDate(cutoff.getDate() - 60);
+      cutoff.setDate(now.getDate() - 60);
     } else if (selectedPeriod === '6months') {
-      cutoff.setDate(cutoff.getDate() - 180);
+      cutoff.setDate(now.getDate() - 180);
     } else if (selectedPeriod === 'year') {
-      cutoff.setDate(cutoff.getDate() - 365);
+      cutoff.setDate(now.getDate() - 365);
     }
     cutoff.setHours(0, 0, 0, 0);
 
     return validSales.filter((s) => new Date(s.createdAt) >= cutoff);
   }, [validSales, selectedPeriod, customStartDate, customEndDate]);
 
-  // 4 KPIs réels calculés en direct sur la période choisie
-  const periodStats = useMemo(() => {
-    const revenue = periodSales.reduce((sum, s) => sum + s.totalTTC, 0);
-    const salesCount = periodSales.length;
-    const averageBasket = salesCount > 0 ? Math.round(revenue / salesCount) : 0;
-    const itemsSold = periodSales.reduce(
-      (sum, s) => sum + s.items.reduce((iSum, it) => iSum + it.quantity, 0),
-      0
+  // Key Metrics calculations
+  const totalSalesRevenue = useMemo(() => {
+    return periodSales.reduce((acc, s) => acc + s.totalTTC, 0);
+  }, [periodSales]);
+
+  const activeCustomersCount = useMemo(() => {
+    const customerIdsWithSales = new Set(
+      validSales.filter((s) => s.customerId).map((s) => s.customerId)
     );
-    // Le stock d'alerte reste l'état actuel de l'inventaire
-    const lowStockCount = products.filter((p) => p.stock <= p.lowStockThreshold).length;
+    return Math.max(customerIdsWithSales.size, customers.length);
+  }, [validSales, customers]);
 
-    return {
-      revenue: Math.round(revenue),
-      salesCount,
-      averageBasket,
-      itemsSold,
-      lowStockCount,
-    };
-  }, [periodSales, products]);
+  const lowStockCount = useMemo(() => {
+    return products.filter((p) => p.stock <= p.lowStockThreshold).length;
+  }, [products]);
 
-  // Répartition par rayon sur la période
-  const categoryStats = useMemo(() => {
-    const productCategory = new Map(products.map((p) => [p.id, p.categoryId]));
-    const revenueByCat = new Map<number, number>();
+  const averageBasket = useMemo(() => {
+    return periodSales.length > 0 ? Math.round(totalSalesRevenue / periodSales.length) : 0;
+  }, [periodSales, totalSalesRevenue]);
 
-    periodSales.slice(0, 100).forEach((sale) =>
-      sale.items.forEach((item) => {
-        const catId = productCategory.get(item.productId);
-        if (catId !== undefined) {
-          revenueByCat.set(catId, (revenueByCat.get(catId) ?? 0) + item.totalTTC);
-        }
-      })
-    );
+  // Today's total sales revenue & count (calendar day 00h-24h)
+  const { todaySalesRevenue, todaySalesCount } = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const todayList = validSales.filter((s) => new Date(s.createdAt) >= startOfToday);
+    const rev = todayList.reduce((acc, s) => acc + s.totalTTC, 0);
+    return { todaySalesRevenue: rev, todaySalesCount: todayList.length };
+  }, [validSales]);
 
-    const total = Array.from(revenueByCat.values()).reduce((a, b) => a + b, 0);
-    return categories
-      .map((cat) => {
-        const revenue = revenueByCat.get(cat.id) ?? 0;
-        return {
-          id: cat.id,
-          name: cat.name,
-          revenue,
-          percentage: total > 0 ? Math.round((revenue / total) * 100) : 0,
-        };
-      })
-      .filter((c) => c.revenue > 0)
-      .sort((a, b) => b.revenue - a.revenue);
-  }, [categories, products, periodSales]);
+  // Daily sales target state with localStorage persistence
+  const [dailySalesTarget, setDailySalesTarget] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('pos_daily_sales_target');
+      if (saved) {
+        const parsed = Number(saved);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+    } catch {}
+    return 50000; // default 50 000 DA
+  });
 
-  // Top 5 produits les plus vendus sur la période
+  const [isEditingTarget, setIsEditingTarget] = useState(false);
+  const [customTargetInput, setCustomTargetInput] = useState('');
+
+  const handleUpdateTarget = (val: number) => {
+    if (val > 0) {
+      setDailySalesTarget(val);
+      try {
+        localStorage.setItem('pos_daily_sales_target', String(val));
+      } catch {}
+    }
+    setIsEditingTarget(false);
+    setCustomTargetInput('');
+  };
+
+  const targetPercentage = Math.min(100, Math.round((todaySalesRevenue / Math.max(1, dailySalesTarget)) * 100));
+  const rawPercentage = Math.round((todaySalesRevenue / Math.max(1, dailySalesTarget)) * 100);
+  const remainingToTarget = Math.max(0, dailySalesTarget - todaySalesRevenue);
+  const isTargetAchieved = todaySalesRevenue >= dailySalesTarget;
+
+  // Top 5 products
   const topProducts = useMemo(() => {
     const map = new Map<
       number,
@@ -382,703 +351,788 @@ export const DashboardView: React.FC = () => {
       .slice(0, 5);
   }, [periodSales, products]);
 
-  // Top 5 clients sur la période
-  const topCustomers = useMemo(() => {
-    const map = new Map<string, { name: string; tickets: number; revenue: number }>();
-    periodSales.forEach((s) => {
-      if (s.customerId === undefined || !s.customerName) return;
-      const key = String(s.customerId);
-      const cur = map.get(key) ?? { name: s.customerName, tickets: 0, revenue: 0 };
-      cur.tickets += 1;
-      cur.revenue += s.totalTTC;
-      map.set(key, cur);
-    });
-    return Array.from(map.entries())
-      .map(([id, v]) => ({ id, ...v }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
-  }, [periodSales]);
+  // Category breakdown
+  const categoryStats = useMemo(() => {
+    const productCategory = new Map(products.map((p) => [p.id, p.categoryId]));
+    const revenueByCat = new Map<number, number>();
+
+    periodSales.forEach((sale) =>
+      sale.items.forEach((item) => {
+        const catId = productCategory.get(item.productId);
+        if (catId !== undefined) {
+          revenueByCat.set(catId, (revenueByCat.get(catId) ?? 0) + item.totalTTC);
+        }
+      })
+    );
+
+    const total = Array.from(revenueByCat.values()).reduce((a, b) => a + b, 0);
+    return categories
+      .map((cat) => {
+        const revenue = revenueByCat.get(cat.id) ?? 0;
+        return {
+          id: cat.id,
+          name: cat.name,
+          revenue,
+          percentage: total > 0 ? Math.round((revenue / total) * 100) : 0,
+        };
+      })
+      .filter((c) => c.revenue > 0)
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [categories, products, periodSales]);
 
   const recentSales = periodSales.slice(0, 5);
   const activePeriodConfig = PERIOD_CONFIG[selectedPeriod];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-7 max-w-7xl mx-auto pb-20">
       {/* ============================================================
-          TOP HERO TOOLBAR: Responsive Masterclass Header
+          TOP LEVEL BAR: Store Status, Title & Period Filter
           ============================================================ */}
-      <div className="sherwood-panel p-4 sm:p-6 lg:p-7 space-y-4 sm:space-y-5 overflow-hidden w-full min-w-0 shadow-xs border border-[#e7ddca] bg-[#fdfbf7]">
-        {/* Ligne 1 : Titre, badge et boutons d'action rapide */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4">
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex items-center flex-wrap gap-2 mb-1">
-              <span className="sherwood-badge-forest inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold">
-                <TrendingUp className="w-3.5 h-3.5 text-[#234931] shrink-0" />
-                <span>Performances en direct</span>
+      <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ded3be] shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#edf5ec] text-[#1b3d24] border border-[#b4dbb6]">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#234931]" />
+                <span>Caisse Certifiée</span>
               </span>
-              <span className="text-[11px] font-semibold text-[#877a6b] hidden sm:inline">·</span>
-              <span className="text-xs font-semibold text-[#6e6354] hidden sm:inline">
-                Période active : <strong className="text-[#1f3d29]">{activePeriodConfig.rangeLabel}</strong>
+              <span className="text-xs text-[#7d6f5f] font-medium hidden sm:inline">
+                • {isOffline ? 'Mode Hors-ligne (IndexedDB)' : 'Cloud Synchronisé (Dual Supabase + Neon)'}
+              </span>
+              <span className="text-xs text-[#7d6f5f] font-medium hidden sm:inline">
+                • {products.length} articles actifs
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-[#1f3d29] font-serif-title tracking-tight flex items-center gap-2.5 truncate">
-              <span className="text-2xl sm:text-3xl shrink-0">🍃</span>
-              <span className="truncate">Tableau de Bord & Métriques</span>
-            </h2>
-            <p className="text-xs sm:text-sm text-[#5d5244] font-medium leading-relaxed line-clamp-1 sm:line-clamp-none">
-              Indicateurs de ventes consolidés et suivi en temps réel de votre commerce
+
+            <h1 className="text-2xl sm:text-3xl font-black text-[#1f3d29] font-serif-title tracking-tight flex items-center gap-2">
+              <span>🍃</span>
+              <span>Tableau de Bord Commercial</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-[#605547] font-medium">
+              Supervision des encaissements, indicateurs prioritaires et accès rapide aux modules de caisse
             </p>
           </div>
 
-          {/* Boutons d'accès rapide Caisse POS & Articles */}
-          <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0 pt-1 sm:pt-0">
+          {/* Quick Actions in Header */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             <button
               type="button"
               onClick={() => setActiveView('pos')}
-              className="touch-btn min-h-[44px] flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 sherwood-btn-forest font-bold text-xs sm:text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-95"
+              className="touch-btn min-h-[44px] px-5 py-2.5 rounded-2xl bg-[#1f3d29] hover:bg-[#16311f] text-white font-bold text-xs sm:text-sm shadow-sm flex items-center gap-2 cursor-pointer transition-transform active:scale-95"
             >
-              <Store className="w-4 h-4 shrink-0" />
-              <span className="whitespace-nowrap">Caisse POS</span>
+              <Store className="w-4 h-4 text-[#86efac]" />
+              <span>Ouvrir Caisse POS</span>
             </button>
 
             <button
               type="button"
-              onClick={() => setActiveView('catalog')}
-              className="touch-btn min-h-[44px] flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 sherwood-btn-outline font-bold text-xs sm:text-sm shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-colors hover:border-[#234931]"
+              onClick={() => {
+                setOpenNewProductModal(true);
+                setActiveView('catalog');
+              }}
+              className="touch-btn min-h-[44px] px-4 py-2.5 rounded-2xl bg-white hover:bg-[#faf7f0] text-[#1f3d29] border border-[#ded3be] font-bold text-xs sm:text-sm shadow-2xs flex items-center gap-1.5 cursor-pointer"
             >
-              <Package className="w-4 h-4 shrink-0" />
-              <span className="whitespace-nowrap">Articles</span>
+              <PlusCircle className="w-4 h-4 text-[#85522b]" />
+              <span>+ Produit</span>
             </button>
           </div>
         </div>
 
-        {/* Ligne 2 : Séparateur, Petites Chips de période en défilement horizontal & Carte recette */}
-        <div className="pt-3 sm:pt-3.5 border-t border-[#e7ddca] flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 min-w-0 max-w-full">
-          {/* Conteneur Période analysée avec petites chips défilables horizontalement */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 min-w-0 flex-1 max-w-full overflow-hidden">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#6e6354] shrink-0 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-[#234931]" />
-              <span>Période analysée :</span>
+        {/* Period Chips Selector */}
+        <div className="pt-3 border-t border-[#ded3be] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#7d6f5f] shrink-0 flex items-center gap-1 mr-1">
+              <Calendar className="w-3.5 h-3.5 text-[#1f3d29]" />
+              <span>Période :</span>
             </span>
 
-            {/* Barre de petites chips avec scroll horizontal fluide sur mobile */}
-            <div
-              role="radiogroup"
-              aria-label="Période d'analyse des performances"
-              className="flex items-center gap-1.5 overflow-x-auto max-w-full py-1 px-1 -mx-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0 touch-pan-x"
-            >
-              {(['today', 'week', 'month', '2months', '6months', 'year', 'custom'] as TimePeriod[]).map((periodKey) => {
-                const isSelected = selectedPeriod === periodKey;
-                const config = PERIOD_CONFIG[periodKey];
+            {(['today', 'week', 'month', '2months', '6months', 'year', 'custom'] as TimePeriod[]).map((periodKey) => {
+              const isSelected = selectedPeriod === periodKey;
+              const config = PERIOD_CONFIG[periodKey];
 
-                return (
-                  <button
-                    key={periodKey}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    onClick={() => setSelectedPeriod(periodKey)}
-                    className={`touch-btn shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2 rounded-full text-xs font-bold transition-all duration-150 cursor-pointer select-none whitespace-nowrap shadow-2xs min-h-[44px] ${
-                      isSelected
-                        ? 'bg-[#1f3d29] text-[#fdfbf7] shadow-xs ring-1 ring-[#16311f]/40 font-black'
-                        : 'bg-[#fdfbf7] border border-[#d8cdba] text-[#554738] hover:text-[#1f3d29] hover:bg-[#ece2d0] font-semibold'
-                    }`}
-                    title={`Filtrer les données pour : ${config.rangeLabel}`}
-                  >
-                    <Calendar
-                      className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 transition-colors ${
-                        isSelected ? 'text-[#86efac]' : 'text-[#786c5c]'
-                      }`}
-                      aria-hidden="true"
-                    />
-                    <span className="whitespace-nowrap">
-                      {config.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+              return (
+                <button
+                  key={periodKey}
+                  type="button"
+                  onClick={() => setSelectedPeriod(periodKey)}
+                  className={`touch-btn px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-[#1f3d29] text-white shadow-xs font-black scale-100 ring-2 ring-[#86efac]/40'
+                      : 'bg-white hover:bg-[#faf7f0] text-[#605547] border border-[#ded3be]'
+                  }`}
+                >
+                  <span>{config.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Badge recette nette : En deux lignes distinctes sur mobile, aligné à droite sur desktop */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between lg:justify-end gap-1.5 sm:gap-4 bg-[#f7f2e7] border border-[#d8cdba] px-4 py-2.5 sm:py-2 rounded-2xl shadow-2xs w-full lg:w-auto shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#234931] inline-block animate-pulse shrink-0" />
-              <span className="text-xs font-bold text-[#6e6354] uppercase tracking-wider">
-                Recette ({activePeriodConfig.label})
-              </span>
-            </div>
-            <span className="text-lg sm:text-xl font-black text-[#1f3d29] font-mono tabular-nums">
-              {formatMoney(periodStats.revenue)}
-            </span>
+          <div className="text-xs text-[#7d6f5f] font-medium shrink-0 flex items-center gap-2">
+            <span>Intervalle actif :</span>
+            <strong className="text-[#1f3d29] bg-[#ede5d6] px-2.5 py-1 rounded-xl font-bold font-mono">
+              {activePeriodConfig.rangeLabel}
+            </strong>
           </div>
         </div>
-
-        {/* Panneau de sélection de date personnalisée affiché quand "Date personnalisée" est actif */}
-        {selectedPeriod === 'custom' && (
-          <div className="pt-3 border-t border-[#e2d7c2] flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-200 bg-[#f7f2e7] p-3 rounded-2xl border border-[#d8cdba]">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-xs font-bold text-[#6e6354] uppercase tracking-wider flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-[#234931]" />
-                <span>Intervalle personnalisé :</span>
-              </span>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-2 bg-[#fdfbf7] border border-[#d8cdba] px-3 py-1.5 rounded-xl shadow-2xs">
-                  <label htmlFor="custom-start-date" className="text-xs font-bold text-[#6e6354]">
-                    Du :
-                  </label>
-                  <input
-                    id="custom-start-date"
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-[#1f3d29] focus:outline-none cursor-pointer"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 bg-[#fdfbf7] border border-[#d8cdba] px-3 py-1.5 rounded-xl shadow-2xs">
-                  <label htmlFor="custom-end-date" className="text-xs font-bold text-[#6e6354]">
-                    Au :
-                  </label>
-                  <input
-                    id="custom-end-date"
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-[#1f3d29] focus:outline-none cursor-pointer"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Raccourcis rapides de date */}
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  const now = new Date();
-                  const first = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-                  const today = now.toISOString().split('T')[0];
-                  setCustomStartDate(first);
-                  setCustomEndDate(today);
-                }}
-                className="px-2.5 py-1 text-xs font-bold text-[#234931] bg-[#ece3d4] hover:bg-[#ded3c0] rounded-lg transition-colors cursor-pointer"
-              >
-                Mois en cours
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const now = new Date();
-                  const first = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-                  const today = now.toISOString().split('T')[0];
-                  setCustomStartDate(first);
-                  setCustomEndDate(today);
-                }}
-                className="px-2.5 py-1 text-xs font-bold text-[#234931] bg-[#ece3d4] hover:bg-[#ded3c0] rounded-lg transition-colors cursor-pointer"
-              >
-                Année civile
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ============================================================
-          QUICK ACCESS CARDS GRID: Frequently Used Tasks
-          Responsive 1 col (mobile), 2 cols (tablet), 4 cols (desktop)
+          1. TOP: 'KEY METRICS' SECTION (Total Sales, Active Customers, Low-Stock Alerts)
           ============================================================ */}
-      <section aria-label="Raccourcis d'accès rapide" className="space-y-3.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#234931] text-[#fdfbf7] flex items-center justify-center shadow-xs">
-              <Zap className="w-4 h-4 text-[#86efac]" />
+      <section aria-labelledby="key-metrics-title" className="space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-[#1f3d29] text-white flex items-center justify-center shadow-xs">
+              <TrendingUp className="w-4 h-4 text-[#86efac]" />
             </div>
             <div>
-              <h3 className="font-bold text-sm sm:text-base text-[#1f3d29] font-serif-title leading-tight">
+              <h2 id="key-metrics-title" className="font-bold text-base sm:text-lg text-[#1f3d29] font-serif-title leading-tight">
+                Indicateurs Clés • Key Metrics
+              </h2>
+              <p className="text-xs text-[#7d6f5f]">
+                Métriques prioritaires consolidées sur {activePeriodConfig.rangeLabel.toLowerCase()}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          {/* Key Metric 1: Total Sales */}
+          <KpiCard
+            label="Total des Ventes (CA Net)"
+            value={formatMoney(totalSalesRevenue)}
+            subValue={`${periodSales.length} ticket${periodSales.length > 1 ? 's' : ''} émis`}
+            hint={activePeriodConfig.hint}
+            icon={Banknote}
+            tone="default"
+            onClick={() => setActiveView('sales')}
+          />
+
+          {/* Key Metric 2: Active Customers */}
+          <KpiCard
+            label="Clients Actifs"
+            value={String(activeCustomersCount)}
+            subValue={`${customers.length} fiches répertoriées`}
+            hint="Comptes avec transactions enregistrées"
+            icon={Users}
+            tone="default"
+            onClick={() => setActiveView('customers')}
+          />
+
+          {/* Key Metric 3: Low-Stock Alerts */}
+          <KpiCard
+            label="Alertes Stock Critique"
+            value={String(lowStockCount)}
+            subValue={lowStockCount > 0 ? 'Articles sous seuil minimal' : 'Stock 100% conforme'}
+            hint={lowStockCount > 0 ? 'Réapprovisionnement requis' : 'Aucune rupture'}
+            icon={AlertTriangle}
+            tone={lowStockCount > 0 ? 'warning' : 'success'}
+            onClick={() => setActiveView('catalog')}
+          />
+
+          {/* Key Metric 4: Average Basket */}
+          <KpiCard
+            label="Panier Moyen"
+            value={formatMoney(averageBasket)}
+            subValue={`${periodSales.length} transaction${periodSales.length > 1 ? 's' : ''}`}
+            hint="Dépense moyenne par passage en caisse"
+            icon={Percent}
+            tone="default"
+          />
+        </div>
+
+        {/* Daily Sales Target Progress Bar Widget */}
+        <div className="bg-white rounded-3xl border border-[#ded3be] p-5 sm:p-6 shadow-2xs space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-xs ${
+                  isTargetAchieved
+                    ? 'bg-[#edf5ec] text-[#1b3d24] border border-[#b4dbb6]'
+                    : 'bg-[#faf7f0] text-[#85522b] border border-[#ded3be]'
+                }`}
+              >
+                {isTargetAchieved ? (
+                  <Trophy className="w-5 h-5 text-[#234931]" />
+                ) : (
+                  <Target className="w-5 h-5 text-[#85522b]" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-bold text-sm sm:text-base text-[#1f3d29] font-serif-title">
+                    Objectif de Ventes du Jour • Daily Sales Target
+                  </h3>
+                  {isTargetAchieved ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-[#edf5ec] text-[#166534] border border-[#86efac]">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      Objectif Atteint !
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#faf7f0] text-[#85522b] border border-[#ded3be]">
+                      {rawPercentage}% réalisé
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-[#7d6f5f] mt-0.5">
+                  Progression du chiffre d&apos;affaires aujourd&apos;hui ({todaySalesCount} transaction{todaySalesCount > 1 ? 's' : ''})
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Target Selectors / Custom Target */}
+            <div className="flex items-center gap-1.5 flex-wrap self-start md:self-auto">
+              <span className="text-[11px] font-bold text-[#7d6f5f] uppercase tracking-wider mr-1 hidden sm:inline">
+                Cible :
+              </span>
+              {[25000, 50000, 100000, 150000].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => handleUpdateTarget(preset)}
+                  className={`touch-btn px-2.5 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                    dailySalesTarget === preset && !isEditingTarget
+                      ? 'bg-[#1f3d29] text-white shadow-2xs font-black ring-1 ring-[#86efac]/40'
+                      : 'bg-[#faf7f0] hover:bg-[#ede5d6] text-[#605547] border border-[#ded3be]'
+                  }`}
+                >
+                  {preset / 1000}k DA
+                </button>
+              ))}
+
+              {!isEditingTarget ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomTargetInput(String(dailySalesTarget));
+                    setIsEditingTarget(true);
+                  }}
+                  className="touch-btn px-2.5 py-1 rounded-xl text-xs font-medium text-[#85522b] hover:bg-[#faf7f0] border border-dashed border-[#ded3be] transition-colors cursor-pointer"
+                  title="Définir un montant personnalisé"
+                >
+                  Autre...
+                </button>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="1000"
+                    step="1000"
+                    value={customTargetInput}
+                    onChange={(e) => setCustomTargetInput(e.target.value)}
+                    placeholder="Montant DA"
+                    className="w-24 px-2 py-1 text-xs font-mono font-bold bg-white border border-[#1f3d29] rounded-xl focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const num = Number(customTargetInput);
+                      if (num > 0) handleUpdateTarget(num);
+                    }}
+                    className="px-2.5 py-1 bg-[#1f3d29] text-white rounded-xl text-xs font-bold cursor-pointer hover:bg-[#16311f]"
+                  >
+                    OK
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingTarget(false)}
+                    className="px-2 py-1 text-xs text-[#7d6f5f] hover:text-[#2c241c] cursor-pointer"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Target Amount Stats and Percentage Header */}
+          <div className="flex flex-wrap items-baseline justify-between gap-2 pt-1 border-t border-[#f0e8dc]">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-black font-serif-title font-mono text-[#1f3d29] tracking-tight">
+                {formatMoney(todaySalesRevenue)}
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-[#7d6f5f] font-mono">
+                / {formatMoney(dailySalesTarget)} fixé
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isTargetAchieved ? (
+                <span className="text-xs font-bold text-[#166534] bg-[#edf5ec] px-3 py-1 rounded-xl border border-[#b4dbb6]">
+                  Dépassement de +{formatMoney(todaySalesRevenue - dailySalesTarget)}
+                </span>
+              ) : (
+                <span className="text-xs font-bold text-[#85522b] bg-[#faf7f0] px-3 py-1 rounded-xl border border-[#ded3be]">
+                  Reste {formatMoney(remainingToTarget)}
+                </span>
+              )}
+              <span
+                className={`text-base sm:text-lg font-black font-mono px-3 py-0.5 rounded-xl border ${
+                  isTargetAchieved
+                    ? 'bg-[#1b3d24] text-[#86efac] border-[#1b3d24]'
+                    : 'bg-[#faf7f0] text-[#1f3d29] border-[#ded3be]'
+                }`}
+              >
+                {rawPercentage}%
+              </span>
+            </div>
+          </div>
+
+          {/* Interactive Progress Bar */}
+          <div className="space-y-1.5">
+            <div
+              role="progressbar"
+              aria-valuenow={todaySalesRevenue}
+              aria-valuemin={0}
+              aria-valuemax={dailySalesTarget}
+              aria-label={`Progression de l'objectif de vente quotidien: ${rawPercentage}%`}
+              className="h-4.5 sm:h-5 bg-[#ede5d6] rounded-full overflow-hidden p-0.5 border border-[#ded3be] relative shadow-inner"
+            >
+              <div
+                className={`h-full rounded-full transition-all duration-700 ease-out relative ${
+                  isTargetAchieved
+                    ? 'bg-linear-to-r from-[#1f3d29] via-[#234931] to-[#15803d]'
+                    : 'bg-linear-to-r from-[#85522b] via-[#1f3d29] to-[#234931]'
+                }`}
+                style={{ width: `${targetPercentage}%` }}
+              >
+                {/* Visual Shimmer Bar */}
+                <div className="absolute inset-0 bg-white/20 animate-pulse pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Milestones markers */}
+            <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-mono text-[#7d6f5f] px-1">
+              <span>0 DA</span>
+              <span className="hidden sm:inline">25% ({formatMoney(dailySalesTarget * 0.25)})</span>
+              <span>50% ({formatMoney(dailySalesTarget * 0.5)})</span>
+              <span className="hidden sm:inline">75% ({formatMoney(dailySalesTarget * 0.75)})</span>
+              <span className="font-bold text-[#1f3d29]">100% ({formatMoney(dailySalesTarget)})</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Critical Stock Alert banner if low-stock items exist */}
+      {lowStockCount > 0 && <InventoryAlertWidget />}
+
+      {/* ============================================================
+          2. CENTER: 'QUICK ACCESS' GRID
+          ============================================================ */}
+      <section aria-labelledby="quick-access-title" className="space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-[#85522b] text-white flex items-center justify-center shadow-xs">
+              <Zap className="w-4 h-4 text-[#fcdbb6]" />
+            </div>
+            <div>
+              <h2 id="quick-access-title" className="font-bold text-base sm:text-lg text-[#1f3d29] font-serif-title leading-tight">
                 Accès Rapide • Quick Access
-              </h3>
-              <p className="text-xs text-[#6e6354] font-medium">
+              </h2>
+              <p className="text-xs text-[#7d6f5f]">
                 Raccourcis vers vos actions prioritaires du quotidien
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
-          {/* Card 1: New Sale (Nouvelle Vente) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Action 1: New Sale */}
           <button
             type="button"
             onClick={() => setActiveView('pos')}
-            className="sherwood-card p-4.5 sm:p-5 text-left w-full transition-all duration-200 group relative flex flex-col justify-between hover:border-[#234931]/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer focus-visible:ring-4 focus-visible:ring-forest-700/40 bg-gradient-to-br from-[#fdfbf7] to-[#f2f7f2]"
-            aria-label="Nouvelle Vente : ouvrir le terminal de caisse POS"
+            className="p-5 text-left rounded-3xl bg-white border border-[#ded3be] hover:border-[#1f3d29] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
           >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="sherwood-badge-forest text-[11px] font-bold">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#1f3d29] bg-[#edf5ec] px-2.5 py-0.5 rounded-full border border-[#b4dbb6]">
                   Caisse POS
                 </span>
-                <div className="w-9 h-9 rounded-xl bg-[#234931] text-[#fdfbf7] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                <div className="w-9 h-9 rounded-xl bg-[#1f3d29] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
                   <ShoppingCart className="w-4 h-4 text-[#86efac]" />
                 </div>
               </div>
-
-              <div>
-                <h4 className="font-bold text-base text-[#1f3d29] font-serif-title leading-tight group-hover:text-[#234931] transition-colors">
-                  Nouvelle Vente
-                </h4>
-                <p className="text-xs text-[#6e6354] mt-1 line-clamp-2 leading-relaxed">
-                  Ouvrir le terminal de caisse, scanner des articles et enregistrer un encaissement.
-                </p>
-              </div>
+              <h3 className="font-bold text-base text-[#1f3d29] font-serif-title">
+                Nouvelle Vente
+              </h3>
+              <p className="text-xs text-[#7d6f5f] leading-relaxed">
+                Ouvrir le terminal de caisse, scanner des articles et enregistrer un encaissement.
+              </p>
             </div>
 
-            <div className="pt-3 mt-4 border-t border-[#e7ddca] flex items-center justify-between text-xs font-bold text-[#234931]">
-              <span className="flex items-center gap-1 group-hover:underline">
-                <span>Lancer la caisse</span>
-              </span>
-              <ArrowUpRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            <div className="mt-4 pt-3 border-t border-[#ede5d6] flex items-center justify-between text-xs font-bold text-[#1f3d29]">
+              <span>Lancer la caisse</span>
+              <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </button>
 
-          {/* Card 2: Add Product (Ajouter un Produit) */}
+          {/* Action 2: Add Product */}
           <button
             type="button"
             onClick={() => {
               setOpenNewProductModal(true);
               setActiveView('catalog');
             }}
-            className="sherwood-card p-4.5 sm:p-5 text-left w-full transition-all duration-200 group relative flex flex-col justify-between hover:border-[#85522b]/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer focus-visible:ring-4 focus-visible:ring-wood-600/40 bg-gradient-to-br from-[#fdfbf7] to-[#fbf5ee]"
-            aria-label="Ajouter un Produit : créer une nouvelle référence de stock"
+            className="p-5 text-left rounded-3xl bg-white border border-[#ded3be] hover:border-[#85522b] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
           >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="sherwood-badge-wood text-[11px] font-bold">
-                  Stock & Rayon
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#85522b] bg-[#faece1] px-2.5 py-0.5 rounded-full border border-[#f0c8a8]">
+                  Inventaire
                 </span>
-                <div className="w-9 h-9 rounded-xl bg-[#85522b] text-[#fff6ec] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                <div className="w-9 h-9 rounded-xl bg-[#85522b] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
                   <PlusCircle className="w-4 h-4 text-[#fcdbb6]" />
                 </div>
               </div>
-
-              <div>
-                <h4 className="font-bold text-base text-[#482611] font-serif-title leading-tight group-hover:text-[#85522b] transition-colors">
-                  Ajouter un Produit
-                </h4>
-                <p className="text-xs text-[#6e6354] mt-1 line-clamp-2 leading-relaxed">
-                  Créer un article dans l'inventaire avec code-barres, prix de vente et seuil d'alerte.
-                </p>
-              </div>
+              <h3 className="font-bold text-base text-[#85522b] font-serif-title">
+                Ajouter un Produit
+              </h3>
+              <p className="text-xs text-[#7d6f5f] leading-relaxed">
+                Créer un article avec code-barres, prix de vente DZD et seuil d'alerte.
+              </p>
             </div>
 
-            <div className="pt-3 mt-4 border-t border-[#e7ddca] flex items-center justify-between text-xs font-bold text-[#85522b]">
-              <span className="flex items-center gap-1 group-hover:underline">
-                <span>Créer une référence</span>
-              </span>
-              <ArrowUpRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            <div className="mt-4 pt-3 border-t border-[#ede5d6] flex items-center justify-between text-xs font-bold text-[#85522b]">
+              <span>Créer une référence</span>
+              <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </button>
 
-          {/* Card 3: View Reports (Consulter les Rapports) */}
+          {/* Action 3: Reports / Sales History */}
           <button
             type="button"
             onClick={() => setActiveView('sales')}
-            className="sherwood-card p-4.5 sm:p-5 text-left w-full transition-all duration-200 group relative flex flex-col justify-between hover:border-[#234931]/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer focus-visible:ring-4 focus-visible:ring-forest-700/40 bg-gradient-to-br from-[#fdfbf7] to-[#f7f2e7]"
-            aria-label="Consulter les Rapports : voir l'historique des ventes et factures"
+            className="p-5 text-left rounded-3xl bg-white border border-[#ded3be] hover:border-[#1f3d29] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
           >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="sherwood-badge-forest text-[11px] font-bold">
-                  Factures & Ventes
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#1f3d29] bg-[#edf5ec] px-2.5 py-0.5 rounded-full border border-[#b4dbb6]">
+                  Comptabilité
                 </span>
-                <div className="w-9 h-9 rounded-xl bg-[#2d563a] text-[#fdfbf7] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                  <FileText className="w-4 h-4 text-[#bbf7d0]" />
+                <div className="w-9 h-9 rounded-xl bg-[#1f3d29] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+                  <FileText className="w-4 h-4 text-[#86efac]" />
                 </div>
               </div>
-
-              <div>
-                <h4 className="font-bold text-base text-[#1f3d29] font-serif-title leading-tight group-hover:text-[#234931] transition-colors">
-                  Consulter les Rapports
-                </h4>
-                <p className="text-xs text-[#6e6354] mt-1 line-clamp-2 leading-relaxed">
-                  Consulter les tickets enregistrés, réimprimer les reçus 80mm et analyser le journal.
-                </p>
-              </div>
+              <h3 className="font-bold text-base text-[#1f3d29] font-serif-title">
+                Journal des Factures
+              </h3>
+              <p className="text-xs text-[#7d6f5f] leading-relaxed">
+                Consulter les tickets enregistrés, réimprimer les reçus 80mm et analyser le journal.
+              </p>
             </div>
 
-            <div className="pt-3 mt-4 border-t border-[#e7ddca] flex items-center justify-between text-xs font-bold text-[#234931]">
-              <span className="flex items-center gap-1 group-hover:underline">
-                <span>Voir les factures</span>
-              </span>
-              <ArrowUpRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            <div className="mt-4 pt-3 border-t border-[#ede5d6] flex items-center justify-between text-xs font-bold text-[#1f3d29]">
+              <span>Voir les factures</span>
+              <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </button>
 
-          {/* Card 4: Fichier Clients (Customer Directory) */}
+          {/* Action 4: Customer Directory */}
           <button
             type="button"
             onClick={() => setActiveView('customers')}
-            className="sherwood-card p-4.5 sm:p-5 text-left w-full transition-all duration-200 group relative flex flex-col justify-between hover:border-[#234931]/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer focus-visible:ring-4 focus-visible:ring-forest-700/40 bg-gradient-to-br from-[#fdfbf7] to-[#f3f6f9]"
-            aria-label="Fichier Clients : consulter le carnet d'adresses et la fidélité"
+            className="p-5 text-left rounded-3xl bg-white border border-[#ded3be] hover:border-[#1f3d29] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
           >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="sherwood-badge-forest text-[11px] font-bold">
-                  Comptes & Fidélité
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#1f3d29] bg-[#edf5ec] px-2.5 py-0.5 rounded-full border border-[#b4dbb6]">
+                  Fidélité CRM
                 </span>
-                <div className="w-9 h-9 rounded-xl bg-[#1e3a5f] text-[#fdfbf7] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                  <Users className="w-4 h-4 text-[#93c5fd]" />
+                <div className="w-9 h-9 rounded-xl bg-[#1f3d29] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+                  <Users className="w-4 h-4 text-[#86efac]" />
                 </div>
               </div>
-
-              <div>
-                <h4 className="font-bold text-base text-[#1e3a5f] font-serif-title leading-tight group-hover:text-[#1e3a5f] transition-colors">
-                  Fichier Clients
-                </h4>
-                <p className="text-xs text-[#6e6354] mt-1 line-clamp-2 leading-relaxed">
-                  Gérer les coordonnées clients, soldes fidélité clochettes et historique d'achats.
-                </p>
-              </div>
+              <h3 className="font-bold text-base text-[#1f3d29] font-serif-title">
+                Fichier Clients
+              </h3>
+              <p className="text-xs text-[#7d6f5f] leading-relaxed">
+                Gérer les coordonnées clients, soldes fidélité et paniers clients en attente.
+              </p>
             </div>
 
-            <div className="pt-3 mt-4 border-t border-[#e7ddca] flex items-center justify-between text-xs font-bold text-[#1e3a5f]">
-              <span className="flex items-center gap-1 group-hover:underline">
-                <span>Ouvrir les clients</span>
-              </span>
-              <ArrowUpRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            <div className="mt-4 pt-3 border-t border-[#ede5d6] flex items-center justify-between text-xs font-bold text-[#1f3d29]">
+              <span>Ouvrir les clients</span>
+              <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </button>
         </div>
       </section>
 
       {/* ============================================================
-          THE 4 REAL KPI CARDS: Responsive & Perfectly Aligned
-          Mobile: 1 col, Tablet: 2 cols, Desktop: 4 cols
+          3. BOTTOM: REVENUE CHARTS (TODAY, MONTH, SIX MONTHS) & ANALYTIC CONTAINERS
           ============================================================ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
-        {/* KPI 1: Chiffre d'affaires */}
-        <KpiCard
-          label="Chiffre d'affaires"
-          value={formatMoney(periodStats.revenue)}
-          periodLabel={activePeriodConfig.label}
-          hint={activePeriodConfig.hint}
-          icon={Banknote}
-          tone="default"
-          onClick={() => setActiveView('sales')}
-        />
-
-        {/* KPI 2: Tickets enregistrés */}
-        <KpiCard
-          label="Tickets enregistrés"
-          value={String(periodStats.salesCount)}
-          periodLabel={activePeriodConfig.label}
-          hint={`${periodStats.itemsSold} article${
-            periodStats.itemsSold > 1 ? 's' : ''
-          } vendu${periodStats.itemsSold > 1 ? 's' : ''}`}
-          icon={Receipt}
-          tone="default"
-          onClick={() => setActiveView('sales')}
-        />
-
-        {/* KPI 3: Panier moyen */}
-        <KpiCard
-          label="Panier moyen"
-          value={formatMoney(periodStats.averageBasket)}
-          periodLabel={activePeriodConfig.label}
-          hint={
-            periodStats.salesCount > 0
-              ? `Sur ${periodStats.salesCount} vente${
-                  periodStats.salesCount > 1 ? 's' : ''
-                }`
-              : 'Aucune transaction'
-          }
-          icon={TrendingUp}
-          tone="default"
-        />
-
-        {/* KPI 4: Stock à surveiller */}
-        <KpiCard
-          label="Stock à surveiller"
-          value={String(periodStats.lowStockCount)}
-          periodLabel="Inventaire"
-          hint={
-            periodStats.lowStockCount > 0
-              ? 'Articles sous seuil minimal'
-              : 'Tous les stocks conformes'
-          }
-          icon={AlertTriangle}
-          tone={periodStats.lowStockCount > 0 ? 'warning' : 'success'}
-          onClick={() => setActiveView('catalog')}
-        />
-      </div>
-
-      {/* Alerte stock dynamique si des articles sont sous seuil */}
-      {periodStats.lowStockCount > 0 && <InventoryAlertWidget />}
-
-      {/* ============================================================
-          CHARTS SECTION: D3 Vector Trend & Daily Breakdown
-          ============================================================ */}
-      <div className="space-y-3">
-        <div
-          className="inline-flex p-1 bg-sand-100 rounded-xl text-xs font-bold border border-sand-200"
-          role="tablist"
-          aria-label="Mode de visualisation graphique"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={chartTab === 'd3-trend'}
-            onClick={() => setChartTab('d3-trend')}
-            className={`touch-btn px-4 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              chartTab === 'd3-trend'
-                ? 'bg-forest-800 text-sand-50 font-bold shadow-xs'
-                : 'text-ink-700 hover:text-forest-900'
-            }`}
-          >
-            <TrendingUp className="w-4 h-4" />
-            <span>
-              Courbe D3 ({activePeriodConfig.chartDays} jours)
-            </span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={chartTab === 'bar-breakdown'}
-            onClick={() => setChartTab('bar-breakdown')}
-            className={`touch-btn px-4 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              chartTab === 'bar-breakdown'
-                ? 'bg-forest-800 text-sand-50 font-bold shadow-xs'
-                : 'text-ink-700 hover:text-forest-900'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Histogramme Journalier</span>
-          </button>
+      <section aria-labelledby="revenue-charts-title" className="space-y-6 pt-2">
+        {/* Section Heading */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 border-b border-[#ded3be] pb-3">
+          <div>
+            <h2 id="revenue-charts-title" className="font-serif-title font-black text-xl sm:text-2xl text-[#1f3d29] flex items-center gap-2">
+              <span>📊</span>
+              <span>Analyses des Recettes & Graphiques Financiers</span>
+            </h2>
+            <p className="text-xs sm:text-sm text-[#7d6f5f]">
+              Cartes uniformes haute visibilité pour Aujourd'hui, Ce Mois et Six Mois, complétées par les courbes interactives
+            </p>
+          </div>
         </div>
 
-        {chartTab === 'd3-trend' ? (
-          <D3RevenueTrendChart days={activePeriodConfig.chartDays} />
-        ) : (
-          <DailyRevenueChart />
-        )}
-      </div>
+        {/* UNIFORM HIGH-CONTRAST REVENUE CARDS: Today, Month, Six Months */}
+        <div className="responsive-container">
+          <MultiPeriodRevenueCard
+            sales={sales}
+            activePeriod={selectedPeriod}
+            onSelectPeriod={(period) => setSelectedPeriod(period)}
+            onNavigateToSales={() => setActiveView('sales')}
+          />
+        </div>
+
+        {/* RESPONSIVE CHARTS CONTAINER: D3 Trend & Daily Breakdown */}
+        <div className="bg-white p-5 sm:p-6 rounded-3xl border border-[#ded3be] shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#ede5d6] pb-3">
+            <div>
+              <h3 className="font-bold text-base sm:text-lg text-[#1f3d29] font-serif-title flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-[#1f3d29]" />
+                <span>Courbe Temporelle des Recettes ({activePeriodConfig.label})</span>
+              </h3>
+              <p className="text-xs text-[#7d6f5f]">
+                Visualisation interactive des flux de caisse et histogramme quotidien
+              </p>
+            </div>
+
+            {/* Chart mode toggle */}
+            <div className="flex items-center gap-1 p-1 bg-[#faf7f0] rounded-xl border border-[#ded3be] self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setChartTab('d3-trend')}
+                className={`touch-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  chartTab === 'd3-trend'
+                    ? 'bg-[#1f3d29] text-white shadow-xs'
+                    : 'text-[#605547] hover:text-[#1f3d29]'
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>Courbe D3 ({activePeriodConfig.chartDays}j)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setChartTab('bar-breakdown')}
+                className={`touch-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  chartTab === 'bar-breakdown'
+                    ? 'bg-[#1f3d29] text-white shadow-xs'
+                    : 'text-[#605547] hover:text-[#1f3d29]'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Histogramme</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="min-h-[280px]">
+            {chartTab === 'd3-trend' ? (
+              <D3RevenueTrendChart days={activePeriodConfig.chartDays} />
+            ) : (
+              <DailyRevenueChart />
+            )}
+          </div>
+        </div>
+
+        {/* OPERATIONAL BREAKDOWN (2 COLUMNS): Top Products + Recent Transactions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
+          {/* Left: Top 5 Best Sellers & Category Breakdown */}
+          <div className="space-y-5">
+            <section className="bg-white p-5 rounded-3xl border border-[#ded3be] shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-[#ede5d6] pb-3">
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base text-[#1f3d29] font-serif-title flex items-center gap-1.5">
+                    <Package className="w-4 h-4 text-[#85522b]" />
+                    <span>Articles les Plus Vendus ({activePeriodConfig.label})</span>
+                  </h3>
+                  <p className="text-[11px] text-[#7d6f5f]">Classement par volume de ventes</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveView('catalog')}
+                  className="text-xs font-bold text-[#1f3d29] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Catalogue</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {topProducts.length === 0 ? (
+                <div className="py-8 text-center text-xs text-[#877a6b]">
+                  Aucun article vendu sur cette période.
+                </div>
+              ) : (
+                <ul className="divide-y divide-[#ede5d6]">
+                  {topProducts.map((p, idx) => (
+                    <li key={p.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-6 h-6 rounded-lg bg-[#faf7f0] text-[#1f3d29] font-mono font-bold text-xs flex items-center justify-center shrink-0 border border-[#ded3be]">
+                          {idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="font-bold text-[#1f3d29] truncate">{p.name}</div>
+                          <div className="text-[10px] text-[#7d6f5f] font-mono">
+                            {p.sku} • {p.units} unité{p.units > 1 ? 's' : ''}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <div className="font-mono font-black text-[#85522b]">
+                          {formatMoney(p.revenue)}
+                        </div>
+                        <div className="text-[10px] text-[#7d6f5f]">Chiffre généré</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            {/* Category Split */}
+            <section className="bg-white p-5 rounded-3xl border border-[#ded3be] shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-[#ede5d6] pb-3">
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base text-[#1f3d29] font-serif-title flex items-center gap-1.5">
+                    <Tag className="w-4 h-4 text-[#1f3d29]" />
+                    <span>Répartition par Rayon & Catégorie</span>
+                  </h3>
+                  <p className="text-[11px] text-[#7d6f5f]">Contribution au chiffre d'affaires</p>
+                </div>
+              </div>
+
+              {categoryStats.length === 0 ? (
+                <div className="py-8 text-center text-xs text-[#877a6b]">
+                  Aucune vente par rayon disponible.
+                </div>
+              ) : (
+                <ul className="space-y-3 pt-1">
+                  {categoryStats.map((c) => (
+                    <li key={c.id} className="space-y-1 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[#1f3d29]">{c.name}</span>
+                        <span className="font-mono font-bold text-[#1f3d29]">
+                          {formatMoney(c.revenue)}{' '}
+                          <span className="text-[#7d6f5f] font-normal">({c.percentage}%)</span>
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-[#ede5d6] overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-[#1f3d29] transition-all duration-300"
+                          style={{ width: `${Math.max(4, c.percentage)}%` }}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+
+          {/* Right: Recent Transactions (with 1-click Thermal Receipt Preview) */}
+          <div className="space-y-5">
+            <section className="bg-white p-5 rounded-3xl border border-[#ded3be] shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-[#ede5d6] pb-3">
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base text-[#1f3d29] font-serif-title flex items-center gap-1.5">
+                    <Receipt className="w-4 h-4 text-[#1f3d29]" />
+                    <span>Dernières Transactions ({activePeriodConfig.label})</span>
+                  </h3>
+                  <p className="text-[11px] text-[#7d6f5f]">Aperçu ticket thermique en un clic</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveView('sales')}
+                  className="text-xs font-bold text-[#1f3d29] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Journal complet</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {recentSales.length === 0 ? (
+                <div className="py-8 text-center text-xs text-[#877a6b]">
+                  Aucune transaction récente enregistrée.
+                </div>
+              ) : (
+                <ul className="divide-y divide-[#ede5d6]">
+                  {recentSales.map((s) => {
+                    const payInfo = PAYMENT_LABELS[s.paymentMethod] || { label: 'Autre', textCls: 'text-[#1f3d29]' };
+                    const totalItems = s.items.reduce((sum, it) => sum + it.quantity, 0);
+
+                    return (
+                      <li
+                        key={s.id}
+                        className="py-2.5 flex items-center justify-between gap-3 text-xs hover:bg-[#faf7f0] rounded-xl px-1.5 transition-colors"
+                      >
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-[#1f3d29]">
+                              {s.saleNumber}
+                            </span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-[#faf7f0] border border-[#ded3be] ${payInfo.textCls}`}>
+                              {payInfo.label}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-[#7d6f5f] flex items-center gap-1.5 truncate">
+                            <span>{s.customerName || 'Client comptoir'}</span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-[#a49685]" />
+                              {formatSaleDate(s.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <div className="text-right">
+                            <div className="font-mono font-black text-sm text-[#1f3d29]">
+                              {formatMoney(s.totalTTC)}
+                            </div>
+                            <div className="text-[10px] text-[#7d6f5f]">
+                              {totalItems} article{totalItems > 1 ? 's' : ''}
+                            </div>
+                          </div>
+
+                          {/* Thermal Receipt Preview Button */}
+                          <button
+                            type="button"
+                            onClick={() => setPreviewSale(s)}
+                            className="touch-btn p-2 rounded-xl bg-[#faf7f0] hover:bg-[#1f3d29] hover:text-white text-[#1f3d29] border border-[#ded3be] transition-colors cursor-pointer"
+                            title="Aperçu & impression du ticket thermique"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          </div>
+        </div>
+      </section>
 
       {/* ============================================================
-          THE 4 ANALYTIC DATA CARDS: Flawless Typography & Spacing
+          FLOATING ACTION BUTTON: Instant 1-click cart addition
           ============================================================ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
-        {/* Card 1: Dernières transactions */}
-        <section className="sherwood-card p-5 space-y-4">
-          <SectionHeader
-            title={`Dernières transactions (${activePeriodConfig.label})`}
-            hint={activePeriodConfig.rangeLabel}
-            icon={Receipt}
-            action={{ label: 'Toutes les factures', onClick: () => setActiveView('sales') }}
-          />
+      <QuickAddCartFab />
 
-          {recentSales.length === 0 ? (
-            <EmptyState
-              text={`Aucune transaction enregistrée sur cette période (${activePeriodConfig.rangeLabel.toLowerCase()}).`}
-            />
-          ) : (
-            <ul className="divide-y divide-sand-200/80">
-              {recentSales.map((s) => {
-                const payInfo = PAYMENT_LABELS[s.paymentMethod];
-                const totalItems = s.items.reduce((sum, it) => sum + it.quantity, 0);
-
-                return (
-                  <li
-                    key={s.id}
-                    className="py-3 flex items-center justify-between gap-4 text-xs hover:bg-sand-50/80 rounded-xl px-2 transition-colors"
-                  >
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-forest-900 text-xs">
-                          {s.saleNumber}
-                        </span>
-                        <span aria-hidden="true" className="text-sand-300">·</span>
-                        <span className={`font-semibold ${payInfo.textCls}`}>
-                          {payInfo.label}
-                        </span>
-                      </div>
-                      <div className="text-xs text-ink-600 flex items-center gap-1.5 truncate">
-                        <span className="font-semibold text-ink-900">
-                          {s.customerName || 'Client comptoir'}
-                        </span>
-                        <span aria-hidden="true" className="text-sand-300">·</span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 text-sand-300 shrink-0" />
-                          {formatSaleDate(s.createdAt)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <div className="font-black text-base sm:text-lg text-forest-900 font-mono tabular-nums whitespace-nowrap">
-                        {formatMoney(s.totalTTC)}
-                      </div>
-                      <div className="text-xs text-ink-600 font-medium whitespace-nowrap">
-                        {totalItems} article{totalItems > 1 ? 's' : ''}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        {/* Card 2: Produits les plus vendus */}
-        <section className="sherwood-card p-5 space-y-4">
-          <SectionHeader
-            title={`Articles les plus vendus (${activePeriodConfig.label})`}
-            hint={`Classement par volume (${activePeriodConfig.rangeLabel.toLowerCase()})`}
-            icon={Package}
-            action={{ label: 'Catalogue', onClick: () => setActiveView('catalog') }}
-          />
-
-          {topProducts.length === 0 ? (
-            <EmptyState
-              text={`Aucun article vendu sur cette période (${activePeriodConfig.rangeLabel.toLowerCase()}).`}
-            />
-          ) : (
-            <ol className="divide-y divide-sand-200/80">
-              {topProducts.map((p, idx) => (
-                <li
-                  key={p.id}
-                  className="py-3 flex items-center justify-between gap-4 text-xs hover:bg-sand-50/80 rounded-xl px-2 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-7 h-7 rounded-lg bg-sand-100 text-forest-900 font-bold text-xs flex items-center justify-center shrink-0 font-mono border border-sand-200">
-                      {String(idx + 1).padStart(2, '0')}
-                    </span>
-                    <div className="min-w-0 space-y-0.5">
-                      <div className="font-bold text-forest-900 text-xs sm:text-sm truncate" title={p.name}>
-                        {p.name}
-                      </div>
-                      <div className="text-xs text-ink-600 flex items-center gap-1.5 truncate">
-                        <span className="font-mono text-ink-700">{p.sku}</span>
-                        <span aria-hidden="true" className="text-sand-300">·</span>
-                        <span className="font-semibold text-forest-800">
-                          {p.units} unité{p.units > 1 ? 's' : ''} vendue{p.units > 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <div className="font-black text-sm sm:text-base text-forest-900 font-mono tabular-nums whitespace-nowrap">
-                      {formatMoney(p.revenue)}
-                    </div>
-                    <div className="text-[11px] text-ink-600 font-medium whitespace-nowrap">Chiffre d'affaires</div>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
-
-        {/* Card 3: Ventes par rayon */}
-        <section className="sherwood-card p-5 space-y-4">
-          <SectionHeader
-            title={`Ventes par rayon (${activePeriodConfig.label})`}
-            hint={`Part de chiffre d'affaires (${activePeriodConfig.rangeLabel.toLowerCase()})`}
-            icon={Tag}
-          />
-
-          {categoryStats.length === 0 ? (
-            <EmptyState
-              text={`Aucune vente par rayon disponible pour ${activePeriodConfig.rangeLabel.toLowerCase()}.`}
-            />
-          ) : (
-            <ul className="space-y-4 pt-1">
-              {categoryStats.map((c) => (
-                <li key={c.id} className="space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-forest-900 truncate">{c.name}</span>
-                    <div className="text-right font-mono flex items-center gap-2 shrink-0">
-                      <span className="font-bold text-forest-800 tabular-nums">{formatMoney(c.revenue)}</span>
-                      <span className="text-xs font-semibold text-ink-600 font-mono">
-                        ({c.percentage}%)
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    className="h-2 rounded-full bg-sand-200 overflow-hidden"
-                    role="progressbar"
-                    aria-valuenow={c.percentage}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={`Part de vente : ${c.name} (${c.percentage}%)`}
-                  >
-                    <div
-                      className="h-full rounded-full bg-forest-700 transition-all duration-300"
-                      style={{ width: `${Math.max(4, c.percentage)}%` }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {/* Card 4: Meilleurs clients */}
-        <section className="sherwood-card p-5 space-y-4">
-          <SectionHeader
-            title={`Fidélité & Meilleurs clients (${activePeriodConfig.label})`}
-            hint={`Dépenses cumulées (${activePeriodConfig.rangeLabel.toLowerCase()})`}
-            icon={Users}
-            action={{ label: 'Fichier clients', onClick: () => setActiveView('customers') }}
-          />
-
-          {topCustomers.length === 0 ? (
-            <EmptyState
-              text={`Aucun client associé à une transaction pour ${activePeriodConfig.rangeLabel.toLowerCase()}.`}
-            />
-          ) : (
-            <ol className="divide-y divide-sand-200/80">
-              {topCustomers.map((c, idx) => (
-                <li
-                  key={c.id}
-                  className="py-3 flex items-center justify-between gap-4 text-xs hover:bg-sand-50/80 rounded-xl px-2 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-7 h-7 rounded-lg bg-sand-100 text-forest-900 font-bold text-xs flex items-center justify-center shrink-0 font-mono border border-sand-200">
-                      {String(idx + 1).padStart(2, '0')}
-                    </span>
-                    <div className="min-w-0 space-y-0.5">
-                      <div className="font-bold text-forest-900 text-xs sm:text-sm truncate" title={c.name}>
-                        {c.name}
-                      </div>
-                      <div className="text-xs text-ink-600">
-                        <span>
-                          {c.tickets} transaction{c.tickets > 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <div className="font-black text-sm sm:text-base text-forest-900 font-mono tabular-nums whitespace-nowrap">
-                      {formatMoney(c.revenue)}
-                    </div>
-                    <div className="text-[11px] text-ink-600 font-medium whitespace-nowrap">Total dépensé</div>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
-      </div>
-
-      {periodStats.lowStockCount === 0 && (
-        <p className="flex items-center gap-2 text-xs text-ink-600 bg-sand-100/60 p-3.5 rounded-xl border border-sand-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
-          <span>
-            Tous les stocks de la boutique sont au-dessus de leur seuil minimal de sécurité.
-          </span>
-        </p>
+      {/* ============================================================
+          THERMAL RECEIPT PREVIEW MODAL
+          ============================================================ */}
+      {previewSale && (
+        <PrintableReceiptModal
+          sale={previewSale}
+          onClose={() => setPreviewSale(null)}
+        />
       )}
     </div>
   );
